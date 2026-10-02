@@ -133,7 +133,7 @@ export const updateTicketStatus = createServerFn({ method: "POST" })
     if (data.status === "resolvido") {
       if (data.solution_comment) patch.solution_comment = data.solution_comment;
       if (data.solution_photo) patch.solution_photo = data.solution_photo;
-ga      patch.resolved_at = new Date().toISOString();
+patch.resolved_at = new Date().toISOString();
     }
     const { error } = await context.supabase
       .from("tickets")
