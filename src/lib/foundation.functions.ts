@@ -45,6 +45,10 @@ export const saveAuthorizedPerson = createServerFn({ method: "POST" }).middlewar
   if ((validSectors ?? []).length !== data.setores.length) throw new Error("Um ou mais setores selecionados não existem.");
   const { data: existingProfiles, error: profileLookupError } = await db.from("profiles").select("id, email").eq("email", data.email);
   if (profileLookupError) throw new Error("Não foi possível verificar a conta vinculada.");
+  const profile = (existingProfiles ?? [])[0];
+  if (profile?.id === context.userId && data.papel !== "admin") {
+    throw new Error("Não é possível remover seu próprio papel de administrador.");
+  }
   const payload = { email: data.email, nome: data.nome, papel: data.papel as Role, setores: data.setores, ativo: data.ativo, updated_at: new Date().toISOString() };
   let savedId = data.id;
   if (data.id) {
@@ -55,11 +59,7 @@ export const saveAuthorizedPerson = createServerFn({ method: "POST" }).middlewar
     if (error) throw new Error("Não foi possível cadastrar a pessoa autorizada.");
     savedId = saved.id;
   }
-  const profile = (existingProfiles ?? [])[0];
   if (profile) {
-    if (profile.id === context.userId && data.papel !== "admin") {
-      throw new Error("Não é possível remover seu próprio papel de administrador.");
-    }
     const { error: profileError } = await db.from("profiles").update({ full_name: data.nome }).eq("id", profile.id);
     if (profileError) throw new Error("Pessoa salva, mas não foi possível atualizar o perfil.");
     // Preserve the active admin role when the administrator edits their own name/sectors.
