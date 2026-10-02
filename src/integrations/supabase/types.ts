@@ -41,6 +41,39 @@ export type Database = {
         }
         Relationships: []
       }
+      pessoas_autorizadas: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          email: string
+          id: string
+          nome: string
+          papel: Database["public"]["Enums"]["app_role"]
+          setores: string[]
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          email: string
+          id?: string
+          nome: string
+          papel?: Database["public"]["Enums"]["app_role"]
+          setores?: string[]
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          email?: string
+          id?: string
+          nome?: string
+          papel?: Database["public"]["Enums"]["app_role"]
+          setores?: string[]
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -231,6 +264,35 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "tickets_sector_id_fkey"
+            columns: ["sector_id"]
+            isOneToOne: false
+            referencedRelation: "sectors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_sectors: {
+        Row: {
+          created_at: string
+          id: string
+          sector_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          sector_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          sector_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_sectors_sector_id_fkey"
             columns: ["sector_id"]
             isOneToOne: false
             referencedRelation: "sectors"
