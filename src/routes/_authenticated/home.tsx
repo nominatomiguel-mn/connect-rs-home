@@ -21,6 +21,7 @@ function HomePage() {
       <h1 className="mt-2 text-2xl font-black tracking-tight sm:text-3xl">Olá, {session?.fullName?.split(" ")[0] ?? "bem-vindo"}!</h1>
       <p className="mt-2 max-w-xl text-sm leading-relaxed opacity-85">Bem-vindo ao RS CONECT. Aqui você encontra os recursos disponíveis conforme seu perfil de acesso.</p>
       <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-background/15 px-3 py-1.5 text-xs font-semibold"><ShieldCheck className="size-4" /> {roleLabels[role] ?? "Usuário autorizado"}</div>
+      {session?.sectors?.length ? <p className="mt-3 text-sm opacity-90">Seus setores: {session.sectors.map((sector) => sector.name).join(", ")}</p> : null}
     </section>
     <section><div className="mb-3"><h2 className="text-lg font-bold">Acessos rápidos</h2><p className="text-sm text-muted-foreground">Os recursos aparecem conforme suas permissões.</p></div>
       <div className="grid gap-3 sm:grid-cols-2">
