@@ -57,12 +57,18 @@ export const saveAuthorizedPerson = createServerFn({ method: "POST" }).middlewar
   }
   const profile = (existingProfiles ?? [])[0];
   if (profile) {
+    if (profile.id === context.userId && data.papel !== "admin") {
+      throw new Error("Não é possível remover seu próprio papel de administrador.");
+    }
     const { error: profileError } = await db.from("profiles").update({ full_name: data.nome }).eq("id", profile.id);
     if (profileError) throw new Error("Pessoa salva, mas não foi possível atualizar o perfil.");
-    const { error: deleteRolesError } = await db.from("user_roles").delete().eq("user_id", profile.id);
-    if (deleteRolesError) throw new Error("Pessoa salva, mas não foi possível atualizar o papel.");
-    const { error: insertRoleError } = await db.from("user_roles").insert({ user_id: profile.id, role: data.papel });
-    if (insertRoleError) throw new Error("Pessoa salva, mas não foi possível atribuir o papel.");
+    // Preserve the active admin role when the administrator edits their own name/sectors.
+    if (profile.id !== context.userId) {
+      const { error: deleteRolesError } = await db.from("user_roles").delete().eq("user_id", profile.id);
+      if (deleteRolesError) throw new Error("Pessoa salva, mas não foi possível atualizar o papel.");
+      const { error: insertRoleError } = await db.from("user_roles").insert({ user_id: profile.id, role: data.papel });
+      if (insertRoleError) throw new Error("Pessoa salva, mas não foi possível atribuir o papel.");
+    }
     const { error: clearSectorsError } = await db.from("user_sectors").delete().eq("user_id", profile.id);
     if (clearSectorsError) throw new Error("Pessoa salva, mas não foi possível atualizar os setores.");
     if (data.setores.length) {
