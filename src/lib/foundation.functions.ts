@@ -81,6 +81,12 @@ export const saveAuthorizedPerson = createServerFn({ method: "POST" }).middlewar
 
 export const setAuthorizedPersonActive = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth]).inputValidator((input: unknown) => z.object({ id: z.string().uuid(), ativo: z.boolean() }).parse(input)).handler(async ({ context, data }) => {
   const db = dbForFoundation(context.supabase); await requireAdmin(db, context.userId);
+  const { data: person, error: lookupError } = await db.from("pessoas_autorizadas").select("email").eq("id", data.id).maybeSingle();
+  if (lookupError || !person) throw new Error("Não foi possível localizar a pessoa autorizada.");
+  const { data: profile } = await db.from("profiles").select("id").eq("email", person.email).maybeSingle();
+  if (!data.ativo && profile?.id === context.userId) {
+    throw new Error("Não é possível desativar o próprio acesso de administrador.");
+  }
   const { error } = await db.from("pessoas_autorizadas").update({ ativo: data.ativo, updated_at: new Date().toISOString() }).eq("id", data.id);
   if (error) throw new Error("Não foi possível alterar o acesso da pessoa.");
   return { ok: true };
