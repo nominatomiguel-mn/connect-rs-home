@@ -1,3 +1,5 @@
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -26,42 +28,48 @@ Deno.serve(async (req) => {
       return json({ error: "Parâmetros inválidos." }, 400);
     }
 
-    const db = createServiceClient(supabaseUrl, serviceRoleKey);
+    const db = createClient(supabaseUrl, serviceRoleKey);
     const accessToken = authHeader.replace(/^Bearer\s+/i, "");
+    const { data: authData, error: authError } = await db.auth.getUser(accessToken);
+    if (authError || !authData.user) return json({ error: "Sessão inválida." }, 401);
 
-    const authResponse = await fetch(`${supabaseUrl}/auth/v1/user`, {
-      headers: { Authorization: `Bearer ${accessToken}`, apikey: serviceRoleKey },
-    });
-    if (!authResponse.ok) return json({ error: "Sessão inválida." }, 401);
-    const caller = await authResponse.json() as { id: string };
+    const callerId = authData.user.id;
+    const { data: ticket, error: ticketError } = await db
+      .from("tickets")
+      .select("id,title,description,location,priority,status,sector_id,created_by")
+      .eq("id", ticketId)
+      .maybeSingle();
+    if (ticketError || !ticket) return json({ error: "Chamado não encontrado." }, 404);
 
-    const { data: ticket } = await db.from("tickets").select("id,title,description,location,priority,status,sector_id,created_by").eq("id", ticketId).maybeSingle();
-    if (!ticket) return json({ error: "Chamado não encontrado." }, 404);
-
-    const { data: roleRows } = await db.from("user_roles").select("role").eq("user_id", caller.id);
-    const isAdmin = (roleRows ?? []).some((row: { role: string }) => row.role === "admin");
+    const { data: roleRows } = await db.from("user_roles").select("role").eq("user_id", callerId);
+    const isAdmin = (roleRows ?? []).some((row) => row.role === "admin");
 
     if (!isAdmin) {
-      if (type === "novo_chamado" && ticket.created_by !== caller.id) return json({ error: "Sem permissão." }, 403);
+      if (type === "novo_chamado" && ticket.created_by !== callerId) return json({ error: "Sem permissão." }, 403);
       if (type === "status_alterado") {
-        const { data: responsible } = await db.from("sector_responsibles").select("user_id").eq("sector_id", ticket.sector_id).eq("user_id", caller.id).maybeSingle();
+        const { data: responsible } = await db
+          .from("sector_responsibles")
+          .select("user_id")
+          .eq("sector_id", ticket.sector_id)
+          .eq("user_id", callerId)
+          .maybeSingle();
         if (!responsible) return json({ error: "Sem permissão." }, 403);
       }
     }
 
     const { data: sector } = await db.from("sectors").select("name").eq("id", ticket.sector_id).maybeSingle();
-    let recipients: { email: string; name: string }[] = [];
+    let recipients: string[] = [];
 
     if (type === "novo_chamado") {
       const { data: responsibleRows } = await db.from("sector_responsibles").select("user_id").eq("sector_id", ticket.sector_id);
-      const ids = (responsibleRows ?? []).map((row: { user_id: string }) => row.user_id);
+      const ids = (responsibleRows ?? []).map((row) => row.user_id);
       if (ids.length) {
-        const { data: profiles } = await db.from("profiles").select("email,full_name").in("id", ids);
-        recipients = (profiles ?? []).filter((profile: { email: string | null }) => profile.email).map((profile: { email: string | null; full_name: string }) => ({ email: profile.email!, name: profile.full_name }));
+        const { data: profiles } = await db.from("profiles").select("email").in("id", ids);
+        recipients = (profiles ?? []).map((profile) => profile.email).filter((email): email is string => !!email);
       }
     } else {
-      const { data: profile } = await db.from("profiles").select("email,full_name").eq("id", ticket.created_by).maybeSingle();
-      if (profile?.email) recipients = [{ email: profile.email, name: profile.full_name }];
+      const { data: profile } = await db.from("profiles").select("email").eq("id", ticket.created_by).maybeSingle();
+      if (profile?.email) recipients = [profile.email];
     }
 
     if (!recipients.length) return json({ ok: true, sent: 0 });
@@ -77,12 +85,11 @@ Deno.serve(async (req) => {
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ from, to: recipients.map((recipient) => recipient.email), subject, html }),
+      body: JSON.stringify({ from, to: recipients, subject, html }),
     });
 
     if (!response.ok) {
-      const details = await response.text();
-      console.error("Email provider error", details);
+      console.error("Email provider error", await response.text());
       return json({ error: "Não foi possível enviar a notificação." }, 502);
     }
 
@@ -92,41 +99,6 @@ Deno.serve(async (req) => {
     return json({ error: "Erro interno ao enviar notificação." }, 500);
   }
 });
-
-function createServiceClient(url: string, key: string) {
-  return {
-    from(table: string) {
-      return new Proxy({ table }, {
-        get(_target, property: string) {
-          if (property === "select") return (columns: string) => query(url, key, table, columns);
-          return undefined;
-        },
-      });
-    },
-  } as any;
-}
-
-async function query(url: string, key: string, table: string, columns: string) {
-  const filters: { column: string; value: string }[] = [];
-  return {
-    eq(column: string, value: string) {
-      filters.push({ column, value });
-      return this;
-    },
-    in(column: string, values: string[]) {
-      return fetchRows(url, key, table, columns, [...filters, { column, value: values.join(",") }], true);
-    },
-    maybeSingle() { return fetchRows(url, key, table, columns, filters, false); },
-  };
-}
-
-async function fetchRows(url: string, key: string, table: string, columns: string, filters: { column: string; value: string }[], inMode = false) {
-  const params = new URLSearchParams({ select: columns });
-  for (const filter of filters) params.set(inMode ? `${filter.column}` : filter.column, inMode ? `in.(${filter.value})` : `eq.${filter.value}`);
-  const response = await fetch(`${url}/rest/v1/${table}?${params.toString()}`, { headers: { apikey: key, Authorization: `Bearer ${key}` } });
-  const data = await response.json();
-  return { data: Array.isArray(data) ? data[0] ?? null : data };
-}
 
 function escapeHtml(value: string) {
   return value.replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[char] ?? char));
