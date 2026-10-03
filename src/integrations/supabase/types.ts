@@ -74,6 +74,18 @@ export type Database = {
         }
         Relationships: []
       }
+      solicitacoes: {
+        Row: { attachment_paths: string[]; created_at: string; created_by: string; decided_at: string | null; detalhes: Json; id: string; status: Database["public"]["Enums"]["request_status"]; tipo: Database["public"]["Enums"]["request_type"]; titulo: string; updated_at: string }
+        Insert: { attachment_paths?: string[]; created_at?: string; created_by: string; decided_at?: string | null; detalhes?: Json; id?: string; status?: Database["public"]["Enums"]["request_status"]; tipo: Database["public"]["Enums"]["request_type"]; titulo: string; updated_at?: string }
+        Update: { attachment_paths?: string[]; created_at?: string; created_by?: string; decided_at?: string | null; detalhes?: Json; id?: string; status?: Database["public"]["Enums"]["request_status"]; tipo?: Database["public"]["Enums"]["request_type"]; titulo?: string; updated_at?: string }
+        Relationships: []
+      }
+      solicitacao_decisoes: {
+        Row: { comentario: string | null; created_at: string; decisao: "aprovada" | "negada"; decidido_por: string; id: string; solicitacao_id: string }
+        Insert: { comentario?: string | null; created_at?: string; decisao: "aprovada" | "negada"; decidido_por: string; id?: string; solicitacao_id: string }
+        Update: { comentario?: string | null; created_at?: string; decisao?: "aprovada" | "negada"; decidido_por?: string; id?: string; solicitacao_id?: string }
+        Relationships: [{ foreignKeyName: "solicitacao_decisoes_solicitacao_id_fkey"; columns: ["solicitacao_id"]; isOneToOne: false; referencedRelation: "solicitacoes"; referencedColumns: ["id"] }]
+      }
       profiles: {
         Row: {
           created_at: string
@@ -323,7 +335,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      can_view_ticket: {
+      decidir_solicitacao: { Args: { _comentario?: string | null; _decisao: Database["public"]["Enums"]["request_status"]; _solicitacao_id: string }; Returns: Database["public"]["Tables"]["solicitacao_decisoes"]["Row"] }\n      can_view_ticket: {
         Args: { _ticket_id: string; _user_id: string }
         Returns: boolean
       }
@@ -338,7 +350,7 @@ export type Database = {
     Enums: {
       app_role: "admin" | "direcao" | "responsavel" | "colaborador"
       ticket_priority: "normal" | "urgente"
-      ticket_status: "aberto" | "em_andamento" | "resolvido"
+      ticket_status: "aberto" | "em_andamento" | "resolvido"\n      request_type: "material" | "copias" | "compra" | "saida_antecipada" | "verba_evento"\n      request_status: "pendente" | "aprovada" | "negada" | "cancelada"
     }
     CompositeTypes: {
       [_ in never]: never
