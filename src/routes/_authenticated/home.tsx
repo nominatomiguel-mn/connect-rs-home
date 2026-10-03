@@ -1,11 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowRight, CalendarDays, CheckCircle2, ClipboardList, FileCheck2, ShieldCheck, Users, Wrench } from "lucide-react";
+import { ArrowRight, CalendarDays, CheckCircle2, ClipboardList, FileCheck2, ShieldCheck, Users, Wrench, type LucideIcon } from "lucide-react";
 import { getSession } from "@/lib/session.functions";
 
 type Ticket = { id: string; title: string; status: "aberto" | "em_andamento" | "resolvido"; priority: "normal" | "urgente"; created_at: string; sector_id: string; sector?: { name: string } | null };
-type Request = { id: string; titulo: string; status: "pendente" | "aprovada" | "negada" | "cancelada"; created_at: string; tipo: string };
+type Request = { id: string; created_by: string; titulo: string; status: "pendente" | "aprovada" | "negada" | "cancelada"; created_at: string; tipo: string };
 type Reservation = { id: string; recurso_id: string; created_by: string; inicio: string; fim: string; finalidade: string; status: "ativa" | "cancelada"; reservante_nome: string; recurso?: { nome: string } | null };
 
 export const Route = createFileRoute("/_authenticated/home")({
@@ -48,7 +48,7 @@ function HomePage() {
     queryKey: ["home", "requests"],
     queryFn: async () => {
       const { data, error } = await import("@/integrations/supabase/client").then(({ supabase }) =>
-        supabase.from("solicitacoes").select("id,titulo,status,created_at,tipo").order("created_at", { ascending: false }).limit(100)
+        supabase.from("solicitacoes").select("id,created_by,titulo,status,created_at,tipo").order("created_at", { ascending: false }).limit(100)
       );
       if (error) throw error;
       return (data ?? []) as Request[];
@@ -134,12 +134,12 @@ function CollaboratorHome({ tickets, requests, reservations, loading }: { ticket
   return <section className="grid gap-4 md:grid-cols-3"><HomeList to="/chamados" icon={ClipboardList} title="Meus chamados abertos" loading={loading} emptyTitle="Nenhum chamado aberto" emptyDescription="Tudo certo por aqui." items={tickets.slice(0,4).map((t) => ({ title: t.title, meta: t.status === "aberto" ? "Aberto" : "Em andamento" }))}/><HomeList to="/solicitacoes" icon={FileCheck2} title="Minhas solicitações" loading={loading} emptyTitle="Nenhuma solicitação" emptyDescription="Suas solicitações aparecerão aqui." items={requests.slice(0,4).map((r) => ({ title: r.titulo, meta: r.status }))}/><HomeList to="/reservas" icon={CalendarDays} title="Próximas reservas" loading={loading} emptyTitle="Nenhuma reserva próxima" emptyDescription="Você não possui reservas futuras." items={reservations.slice(0,4).map((r) => ({ title: r.finalidade, meta: formatDate(r.inicio) }))}/></section>;
 }
 
-function HomeList({ to, icon: Icon, title, items, loading, emptyTitle, emptyDescription }: { to: "/chamados" | "/solicitacoes" | "/reservas"; icon: typeof ClipboardList; title: string; items: { title: string; meta: string }[]; loading: boolean; emptyTitle: string; emptyDescription: string }) {
+function HomeList({ to, icon: Icon, title, items, loading, emptyTitle, emptyDescription }: { to: "/chamados" | "/solicitacoes" | "/reservas"; icon: LucideIcon; title: string; items: { title: string; meta: string }[]; loading: boolean; emptyTitle: string; emptyDescription: string }) {
   return <Link to={to} className="block min-h-44 rounded-2xl border bg-card p-5 hover:bg-accent/40"><div className="flex items-center gap-2"><Icon className="size-5 text-primary"/><h2 className="font-bold">{title}</h2></div>{loading ? <p className="mt-6 text-sm text-muted-foreground">Carregando…</p> : items.length ? <div className="mt-4 space-y-3">{items.map((item) => <div key={item.title+item.meta} className="border-b pb-2 last:border-0"><p className="truncate text-sm font-semibold">{item.title}</p><p className="mt-1 text-xs text-muted-foreground">{item.meta}</p></div>)}</div> : <div className="mt-5"><p className="font-semibold">{emptyTitle}</p><p className="mt-1 text-sm text-muted-foreground">{emptyDescription}</p></div>}</Link>;
 }
 
 function SectionTitle({ title, description }: { title: string; description: string }) { return <div><h2 className="text-lg font-bold">{title}</h2><p className="text-sm text-muted-foreground">{description}</p></div>; }
-function QuickLink({ to, icon: Icon, title, description }: { to: "/admin/pessoas" | "/admin/setores"; icon: typeof Users; title: string; description: string }) { return <Link to={to} className="min-h-20 rounded-2xl border bg-card p-5 hover:bg-accent/40"><div className="flex items-center gap-3"><Icon className="size-5 text-primary"/><div><p className="font-bold">{title}</p><p className="text-sm text-muted-foreground">{description}</p></div></div></Link>; }
-function EmptyState({ icon: Icon, title, description }: { icon: typeof CheckCircle2; title: string; description: string }) { return <div className="rounded-2xl border border-dashed p-8 text-center"><Icon className="mx-auto size-8 text-muted-foreground"/><p className="mt-3 font-semibold">{title}</p><p className="mt-1 text-sm text-muted-foreground">{description}</p></div>; }
+function QuickLink({ to, icon: Icon, title, description }: { to: "/admin/pessoas" | "/admin/setores"; icon: LucideIcon; title: string; description: string }) { return <Link to={to} className="min-h-20 rounded-2xl border bg-card p-5 hover:bg-accent/40"><div className="flex items-center gap-3"><Icon className="size-5 text-primary"/><div><p className="font-bold">{title}</p><p className="text-sm text-muted-foreground">{description}</p></div></div></Link>; }
+function EmptyState({ icon: Icon, title, description }: { icon: LucideIcon; title: string; description: string }) { return <div className="rounded-2xl border border-dashed p-8 text-center"><Icon className="mx-auto size-8 text-muted-foreground"/><p className="mt-3 font-semibold">{title}</p><p className="mt-1 text-sm text-muted-foreground">{description}</p></div>; }
 function ErrorState({ message }: { message: string }) { return <div role="alert" className="rounded-2xl border border-destructive/30 bg-destructive/5 p-6 text-center"><p className="font-semibold">{message}</p><p className="mt-1 text-sm text-muted-foreground">Atualize a página ou tente novamente.</p></div>; }
 function HomeSkeleton() { return <div className="space-y-5" aria-busy="true" aria-label="Carregando Home"><div className="h-40 animate-pulse rounded-2xl bg-muted"/><div className="grid gap-3 sm:grid-cols-3">{Array.from({length:3},(_,i)=><div key={i} className="h-32 animate-pulse rounded-2xl bg-muted"/>)}</div></div>; }
