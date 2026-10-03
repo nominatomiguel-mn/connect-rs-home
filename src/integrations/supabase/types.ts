@@ -109,6 +109,80 @@ export type Database = {
         }
         Relationships: []
       }
+      solicitacao_decisoes: {
+        Row: {
+          comentario: string | null
+          created_at: string
+          decidido_por: string
+          decisao: Database["public"]["Enums"]["request_status"]
+          id: string
+          solicitacao_id: string
+        }
+        Insert: {
+          comentario?: string | null
+          created_at?: string
+          decidido_por: string
+          decisao: Database["public"]["Enums"]["request_status"]
+          id?: string
+          solicitacao_id: string
+        }
+        Update: {
+          comentario?: string | null
+          created_at?: string
+          decidido_por?: string
+          decisao?: Database["public"]["Enums"]["request_status"]
+          id?: string
+          solicitacao_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "solicitacao_decisoes_solicitacao_id_fkey"
+            columns: ["solicitacao_id"]
+            isOneToOne: false
+            referencedRelation: "solicitacoes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      solicitacoes: {
+        Row: {
+          attachment_paths: string[]
+          created_at: string
+          created_by: string
+          decided_at: string | null
+          detalhes: Json
+          id: string
+          status: Database["public"]["Enums"]["request_status"]
+          tipo: Database["public"]["Enums"]["request_type"]
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          attachment_paths?: string[]
+          created_at?: string
+          created_by: string
+          decided_at?: string | null
+          detalhes?: Json
+          id?: string
+          status?: Database["public"]["Enums"]["request_status"]
+          tipo: Database["public"]["Enums"]["request_type"]
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          attachment_paths?: string[]
+          created_at?: string
+          created_by?: string
+          decided_at?: string | null
+          detalhes?: Json
+          id?: string
+          status?: Database["public"]["Enums"]["request_status"]
+          tipo?: Database["public"]["Enums"]["request_type"]
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ticket_comments: {
         Row: {
           author_id: string
@@ -265,6 +339,27 @@ export type Database = {
         Args: { _ticket_id: string; _user_id: string }
         Returns: boolean
       }
+      decidir_solicitacao: {
+        Args: {
+          _comentario?: string
+          _decisao: Database["public"]["Enums"]["request_status"]
+          _solicitacao_id: string
+        }
+        Returns: {
+          comentario: string | null
+          created_at: string
+          decidido_por: string
+          decisao: Database["public"]["Enums"]["request_status"]
+          id: string
+          solicitacao_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "solicitacao_decisoes"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -275,6 +370,13 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "direcao" | "responsavel" | "colaborador"
+      request_status: "pendente" | "aprovada" | "negada" | "cancelada"
+      request_type:
+        | "material"
+        | "copias"
+        | "compra"
+        | "saida_antecipada"
+        | "verba_evento"
       ticket_priority: "normal" | "urgente"
       ticket_status: "aberto" | "em_andamento" | "resolvido"
     }
@@ -405,6 +507,14 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "direcao", "responsavel", "colaborador"],
+      request_status: ["pendente", "aprovada", "negada", "cancelada"],
+      request_type: [
+        "material",
+        "copias",
+        "compra",
+        "saida_antecipada",
+        "verba_evento",
+      ],
       ticket_priority: ["normal", "urgente"],
       ticket_status: ["aberto", "em_andamento", "resolvido"],
     },
