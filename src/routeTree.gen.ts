@@ -10,7 +10,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated/route'
 import { Route as HomeRouteImport } from './routes/_authenticated/home'
-import { Route as ChamadosRouteImport } from './routes/_authenticated/chamados'
+import { Route as ChamadosRouteImport } from './routes/_authenticated/chamados'\nimport { Route as SolicitacoesRouteImport } from './routes/_authenticated/solicitacoes'
 import { Route as AdminPessoasRouteImport } from './routes/_authenticated/admin/pessoas'
 import { Route as AdminSetoresRouteImport } from './routes/_authenticated/admin/setores'
 
@@ -18,7 +18,7 @@ const IndexRoute = IndexRouteImport.update({ id: '/', path: '/', getParentRoute:
 const AuthRoute = AuthRouteImport.update({ id: '/auth', path: '/auth', getParentRoute: () => rootRouteImport } as any)
 const AuthenticatedRoute = AuthenticatedRouteImport.update({ id: '/_authenticated', getParentRoute: () => rootRouteImport } as any)
 const HomeRoute = HomeRouteImport.update({ id: '/_authenticated/home', path: '/home', getParentRoute: () => AuthenticatedRoute } as any)
-const ChamadosRoute = ChamadosRouteImport.update({ id: '/_authenticated/chamados', path: '/chamados', getParentRoute: () => AuthenticatedRoute } as any)
+const ChamadosRoute = ChamadosRouteImport.update({ id: '/_authenticated/chamados', path: '/chamados', getParentRoute: () => AuthenticatedRoute } as any)\nconst SolicitacoesRoute = SolicitacoesRouteImport.update({ id: '/_authenticated/solicitacoes', path: '/solicitacoes', getParentRoute: () => AuthenticatedRoute } as any)
 const AdminPessoasRoute = AdminPessoasRouteImport.update({ id: '/_authenticated/admin/pessoas', path: '/admin/pessoas', getParentRoute: () => AuthenticatedRoute } as any)
 const AdminSetoresRoute = AdminSetoresRouteImport.update({ id: '/_authenticated/admin/setores', path: '/admin/setores', getParentRoute: () => AuthenticatedRoute } as any)
 
@@ -26,7 +26,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/home': typeof HomeRoute
-  '/chamados': typeof ChamadosRoute
+  '/chamados': typeof ChamadosRoute\n  '/solicitacoes': typeof SolicitacoesRoute
   '/admin/pessoas': typeof AdminPessoasRoute
   '/admin/setores': typeof AdminSetoresRoute
 }
@@ -37,7 +37,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/_authenticated': typeof AuthenticatedRoute
   '/_authenticated/home': typeof HomeRoute
-  '/_authenticated/chamados': typeof ChamadosRoute
+  '/_authenticated/chamados': typeof ChamadosRoute\n  '/_authenticated/solicitacoes': typeof SolicitacoesRoute
   '/_authenticated/admin/pessoas': typeof AdminPessoasRoute
   '/_authenticated/admin/setores': typeof AdminSetoresRoute
 }
@@ -55,21 +55,21 @@ declare module '@tanstack/react-router' {
     '/auth': { id: '/auth'; path: '/auth'; fullPath: '/auth'; preLoaderRoute: typeof AuthRouteImport; parentRoute: typeof rootRouteImport }
     '/_authenticated': { id: '/_authenticated'; path: ''; fullPath: ''; preLoaderRoute: typeof AuthenticatedRouteImport; parentRoute: typeof rootRouteImport }
     '/_authenticated/home': { id: '/_authenticated/home'; path: '/home'; fullPath: '/home'; preLoaderRoute: typeof HomeRouteImport; parentRoute: typeof AuthenticatedRoute }
-    '/_authenticated/chamados': { id: '/_authenticated/chamados'; path: '/chamados'; fullPath: '/chamados'; preLoaderRoute: typeof ChamadosRouteImport; parentRoute: typeof AuthenticatedRoute }
+    '/_authenticated/chamados': { id: '/_authenticated/chamados'; path: '/chamados'; fullPath: '/chamados'; preLoaderRoute: typeof ChamadosRouteImport; parentRoute: typeof AuthenticatedRoute }\n    '/_authenticated/solicitacoes': { id: '/_authenticated/solicitacoes'; path: '/solicitacoes'; fullPath: '/solicitacoes'; preLoaderRoute: typeof SolicitacoesRouteImport; parentRoute: typeof AuthenticatedRoute }
     '/_authenticated/admin/pessoas': { id: '/_authenticated/admin/pessoas'; path: '/admin/pessoas'; fullPath: '/admin/pessoas'; preLoaderRoute: typeof AdminPessoasRouteImport; parentRoute: typeof AuthenticatedRoute }
     '/_authenticated/admin/setores': { id: '/_authenticated/admin/setores'; path: '/admin/setores'; fullPath: '/admin/setores'; preLoaderRoute: typeof AdminSetoresRouteImport; parentRoute: typeof AuthenticatedRoute }
   }
 }
 const authenticatedChildren = {
   HomeRoute,
-  ChamadosRoute,
+  ChamadosRoute,\n  SolicitacoesRoute,
   AdminPessoasRoute,
   AdminSetoresRoute,
 }
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(authenticatedChildren)
 export interface AuthenticatedRouteChildren {
   HomeRoute: typeof HomeRoute
-  ChamadosRoute: typeof ChamadosRoute
+  ChamadosRoute: typeof ChamadosRoute\n  SolicitacoesRoute: typeof SolicitacoesRoute
   AdminPessoasRoute: typeof AdminPessoasRoute
   AdminSetoresRoute: typeof AdminSetoresRoute
 }
