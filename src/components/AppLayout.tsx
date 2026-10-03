@@ -53,6 +53,6 @@ export function AppLayout({ children }: { children: ReactNode }) {
       </header>
       <main className="mx-auto w-full max-w-5xl px-4 pb-28 pt-4 md:pb-10 md:pt-6">{children}</main>
     </div>
-    <nav aria-label="Navegação principal" className="fixed inset-x-0 bottom-0 z-20 flex overflow-x-auto border-t bg-card md:hidden"><div className="flex min-w-full">{NavLinks({ isAdmin, orientation: "bottom" })}</div></nav>
+    <nav aria-label="Navegação principal" className="fixed inset-x-0 bottom-0 z-20 flex overflow-x-auto border-t bg-card md:hidden"><div className="flex min-w-full"><NavLinks isAdmin={isAdmin} orientation="bottom" /></div></nav>
   </div>;
 }
