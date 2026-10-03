@@ -34,7 +34,15 @@ async function signedUrl(path: string) {
   const { data } = await supabase.storage.from("chamados").createSignedUrl(path, 60 * 60);
   return data?.signedUrl ?? null;
 }
-async function notifyTicket(ticketId: string, type: "novo_chamado" | "status_alterado") {\n  try {\n    await supabase.functions.invoke("send-ticket-notification", { body: { ticketId, type } });\n  } catch {\n    // A notificação não deve impedir a abertura/atualização do chamado.\n  }\n}\n\nasync function uploadPhoto(ticketId: string, file: File, kind: "chamado" | "solucao") {
+async function notifyTicket(ticketId: string, type: "novo_chamado" | "status_alterado") {
+  try {
+    await supabase.functions.invoke("send-ticket-notification", { body: { ticketId, type } });
+  } catch {
+    // A notificação não deve impedir a abertura/atualização do chamado.
+  }
+}
+
+async function uploadPhoto(ticketId: string, file: File, kind: "chamado" | "solucao") {
   const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";
   const path = kind === "solucao" ? `${ticketId}/solucao-${crypto.randomUUID()}.${extension}` : `${ticketId}/chamado-${crypto.randomUUID()}.${extension}`;
   const { error } = await supabase.storage.from("chamados").upload(path, file, { cacheControl: "3600", contentType: file.type || "image/jpeg", upsert: false });
@@ -132,7 +140,8 @@ function NewTicketForm({ sessionUserId, onCancel, onCreated }: { sessionUserId: 
         const { error: updateError } = await supabase.from("tickets").update({ photo_paths: paths }).eq("id", ticket.id);
         if (updateError) throw updateError;
       }
-      await notifyTicket(ticket.id, "novo_chamado");\n      await onCreated(ticket.id);
+      await notifyTicket(ticket.id, "novo_chamado");
+      await onCreated(ticket.id);
     } catch (e) { setError(e instanceof Error ? e.message : "Não foi possível abrir o chamado."); } finally { setSaving(false); }
   }
 
