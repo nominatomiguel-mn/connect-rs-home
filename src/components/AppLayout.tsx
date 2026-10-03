@@ -2,7 +2,7 @@ import { type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn, useRouterState } from "@tanstack/react-start";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Building2, LogOut, ShieldCheck, Sun, Users } from "lucide-react";
+import { Building2, ClipboardList, LogOut, ShieldCheck, Sun, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { getSession } from "@/lib/session.functions";
 import { cn } from "@/lib/utils";
@@ -12,6 +12,7 @@ function NavLinks({ isAdmin, orientation }: { isAdmin: boolean; orientation: "bo
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const items = [
     { to: "/home", label: "Início", icon: Sun, exact: true },
+    { to: "/chamados", label: "Chamados", icon: ClipboardList, exact: false },
     ...(isAdmin ? [
       { to: "/admin/pessoas", label: "Pessoas", icon: Users, exact: false },
       { to: "/admin/setores", label: "Setores", icon: Building2, exact: false },
