@@ -83,6 +83,7 @@ export interface FileRoutesByTo {
   '/chamados': typeof AuthenticatedChamadosRoute
   '/home': typeof AuthenticatedHomeRoute
   '/solicitacoes': typeof AuthenticatedSolicitacoesRoute
+  '/reservas': typeof AuthenticatedReservasRoute
   '/admin/pessoas': typeof AuthenticatedAdminPessoasRoute
   '/admin/setores': typeof AuthenticatedAdminSetoresRoute
 }
