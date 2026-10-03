@@ -23,7 +23,7 @@ function NavLinks({ isAdmin, orientation }: { isAdmin: boolean; orientation: "bo
   return items.map((item) => {
     const active = item.exact ? pathname === item.to : pathname.startsWith(item.to);
     return <Link key={item.to} to={item.to} className={cn(
-      orientation === "bottom" ? "flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] font-semibold" : "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold",
+      orientation === "bottom" ? "flex min-w-16 flex-1 flex-col items-center justify-center gap-0.5 py-2 text-[11px] font-semibold" : "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold",
       active ? orientation === "bottom" ? "text-primary" : "bg-primary text-primary-foreground" : orientation === "bottom" ? "text-muted-foreground" : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
     )}><item.icon className="size-5" />{item.label}</Link>;
   });
@@ -53,6 +53,6 @@ export function AppLayout({ children }: { children: ReactNode }) {
       </header>
       <main className="mx-auto w-full max-w-5xl px-4 pb-28 pt-4 md:pb-10 md:pt-6">{children}</main>
     </div>
-    <nav className="fixed inset-x-0 bottom-0 z-20 flex border-t bg-card md:hidden"><NavLinks isAdmin={isAdmin} orientation="bottom" /></nav>
+    <nav aria-label="Navegação principal" className="fixed inset-x-0 bottom-0 z-20 flex overflow-x-auto border-t bg-card md:hidden"><div className="flex min-w-full">{NavLinks({ isAdmin, orientation: "bottom" })}</div></nav>
   </div>;
 }
