@@ -117,6 +117,7 @@ export interface FileRouteTypes {
     | '/chamados'
     | '/home'
     | '/solicitacoes'
+    | '/reservas'
     | '/admin/pessoas'
     | '/admin/setores'
   id:
