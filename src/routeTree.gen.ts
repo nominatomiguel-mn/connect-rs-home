@@ -175,6 +175,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedHomeRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/reservas': {
+      id: '/_authenticated/reservas'
+      path: '/reservas'
+      fullPath: '/reservas'
+      preLoaderRoute: typeof AuthenticatedReservasRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/solicitacoes': {
       id: '/_authenticated/solicitacoes'
       path: '/solicitacoes'
