@@ -1,0 +1,90 @@
+import { type ChangeEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { createFileRoute } from "@tanstack/react-router";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { Check, Download, FileText, Paperclip, Plus, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
+import { getSession } from "@/lib/session.functions";
+
+type RequestType = "material" | "copias" | "compra" | "saida_antecipada" | "verba_evento";
+type Status = "pendente" | "aprovada" | "negada" | "cancelada";
+type Solicitation = { id:string; created_by:string; tipo:RequestType; status:Status; titulo:string; detalhes:Record<string,unknown>; attachment_paths:string[]; created_at:string; updated_at:string; decided_at:string|null; };
+type Decision = { id:string; solicitacao_id:string; decidido_por:string; decisao:"aprovada"|"negada"; comentario:string|null; created_at:string };
+type Profile = { id:string; full_name:string; email:string|null };
+
+const types: {value:RequestType; label:string}[] = [
+ {value:"material",label:"Pedido de material"},{value:"copias",label:"Cópias / impressões"},{value:"compra",label:"Compra"},
+ {value:"saida_antecipada",label:"Saída antecipada"},{value:"verba_evento",label:"Uso de verba de evento"}
+];
+const labels: Record<Status,string> = {pendente:"Pendente",aprovada:"Aprovada",negada:"Negada",cancelada:"Cancelada"};
+
+function dateTime(v:string){return new Intl.DateTimeFormat("pt-BR",{dateStyle:"short",timeStyle:"short"}).format(new Date(v));}
+function csvEscape(v:unknown){return '"'+String(v??"").replaceAll('"','""')+'"';}
+function typeLabel(v:RequestType){return types.find(t=>t.value===v)?.label??v;}
+async function signed(path:string){const {data}=await supabase.storage.from("solicitacoes").createSignedUrl(path,3600);return data?.signedUrl??null;}
+
+export const Route=createFileRoute("/_authenticated/solicitacoes")({head:()=>({meta:[{title:"Solicitações — RS CONECT"}]}),component:SolicitacoesPage});
+
+function SolicitacoesPage(){
+ const getSessionFn=useServerFn(getSession); const qc=useQueryClient();
+ const {data:session,isLoading:sessionLoading}=useQuery({queryKey:["session"],queryFn:()=>getSessionFn()});
+ const isDirection=!!session?.roles.includes("direcao")||!!session?.roles.includes("admin");
+ const [creating,setCreating]=useState(false); const [selected,setSelected]=useState<Solicitation|null>(null);
+ const [typeFilter,setTypeFilter]=useState<"todos"|RequestType>("todos"); const [statusFilter,setStatusFilter]=useState<"todos"|Status>("todos"); const [from,setFrom]=useState(""); const [to,setTo]=useState("");
+ const {data:requests=[],isLoading,error}=useQuery({queryKey:["solicitacoes"],enabled:!!session,queryFn:async()=>{const {data,error}=await supabase.from("solicitacoes").select("*").order("created_at",{ascending:false});if(error)throw error;return(data??[]) as Solicitation[]}});
+ const visible=useMemo(()=>requests.filter(r=>(typeFilter==="todos"||r.tipo===typeFilter)&&(statusFilter==="todos"||r.status===statusFilter)&&(!from||r.created_at.slice(0,10)>=from)&&(!to||r.created_at.slice(0,10)<=to)),[requests,typeFilter,statusFilter,from,to]);
+ async function exportCsv(){
+  const header=["ID","Tipo","Título","Status","Criado em","Decidido em","Detalhes"];
+  const rows=visible.map(r=>[r.id,typeLabel(r.tipo),r.titulo,labels[r.status],dateTime(r.created_at),r.decided_at?dateTime(r.decided_at):"",JSON.stringify(r.detalhes)]);
+  const blob=new Blob([[header,...rows].map(row=>row.map(csvEscape).join(",")).join("\n")],{type:"text/csv;charset=utf-8"});
+  const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="solicitacoes.csv";a.click();URL.revokeObjectURL(url);
+ }
+ if(sessionLoading)return <p className="text-sm text-muted-foreground">Carregando…</p>;
+ if(creating)return <NewRequestForm userId={session?.userId??""} onCancel={()=>setCreating(false)} onCreated={async()=>{setCreating(false);await qc.invalidateQueries({queryKey:["solicitacoes"]});}}/>;
+ if(selected)return <RequestDetail request={selected} isDirection={isDirection} onBack={()=>setSelected(null)} onChanged={async()=>{await qc.invalidateQueries({queryKey:["solicitacoes"]});const {data}=await supabase.from("solicitacoes").select("*").eq("id",selected.id).single();if(data)setSelected(data as Solicitation);}}/>;
+
+ return <div className="space-y-5">
+  <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-xs font-bold uppercase tracking-wider text-primary">Fluxo interno</p><h1 className="mt-1 text-2xl font-black">Solicitações</h1><p className="mt-1 text-sm text-muted-foreground">{isDirection?"Aprovações e histórico de solicitações.":"Acompanhe as solicitações que você abriu."}</p></div><Button onClick={()=>setCreating(true)}><Plus className="size-4"/>Nova solicitação</Button></header>
+  {isDirection?<section className="grid gap-3 rounded-2xl border bg-card p-3 sm:grid-cols-2 lg:grid-cols-5"><select className="h-10 rounded-lg border bg-background px-3 text-sm" value={typeFilter} onChange={e=>setTypeFilter(e.target.value as typeof typeFilter)}><option value="todos">Todos os tipos</option>{types.map(t=><option key={t.value} value={t.value}>{t.label}</option>)}</select><select className="h-10 rounded-lg border bg-background px-3 text-sm" value={statusFilter} onChange={e=>setStatusFilter(e.target.value as typeof statusFilter)}><option value="todos">Todos os status</option>{Object.entries(labels).map(([v,l])=><option key={v} value={v}>{l}</option>)}</select><input type="date" className="h-10 rounded-lg border bg-background px-3 text-sm" value={from} onChange={e=>setFrom(e.target.value)}/><input type="date" className="h-10 rounded-lg border bg-background px-3 text-sm" value={to} onChange={e=>setTo(e.target.value)}/><Button variant="outline" onClick={exportCsv}><Download className="size-4"/>CSV</Button></section>:null}
+  {error?<p role="alert" className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">Não foi possível carregar as solicitações.</p>:null}
+  {isDirection?<p className="text-sm text-muted-foreground">{visible.length} solicitação(ões) encontrada(s).</p>:null}
+  <section className="space-y-3">{!requests.length&&!error?<div className="rounded-2xl border border-dashed p-8 text-center"><p className="font-semibold">Nenhuma solicitação.</p></div>:visible.map(r=><button type="button" key={r.id} onClick={()=>setSelected(r)} className="w-full rounded-2xl border bg-card p-4 text-left hover:bg-accent/40"><div className="flex items-start justify-between gap-3"><div><div className="flex flex-wrap gap-2"><h2 className="font-bold">{r.titulo}</h2><span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold">{labels[r.status]}</span></div><p className="mt-1 text-sm text-muted-foreground">{typeLabel(r.tipo)} · {dateTime(r.created_at)}</p></div><FileText className="size-5 shrink-0 text-muted-foreground"/></div><p className="mt-2 line-clamp-2 text-sm text-muted-foreground">{detailSummary(r.detalhes)}</p></button>)}</section>
+ </div>;
+}
+function detailSummary(d:Record<string,unknown>){return Object.entries(d).map(([k,v])=>k+": "+String(v)).join(" · ");}
+
+function NewRequestForm({userId,onCancel,onCreated}:{userId:string;onCancel:()=>void;onCreated:()=>Promise<void>}){
+ const [tipo,setTipo]=useState<RequestType>("material"); const [titulo,setTitulo]=useState(""); const [details,setDetails]=useState<Record<string,string>>({}); const [files,setFiles]=useState<File[]>([]); const [saving,setSaving]=useState(false); const [error,setError]=useState(""); const inputRef=useRef<HTMLInputElement>(null);
+ function set(k:string,v:string){setDetails(d=>({...d,[k]:v}));}
+ function addFiles(e:ChangeEvent<HTMLInputElement>){setFiles(a=>[...a,...Array.from(e.target.files??[])].slice(0,3));e.target.value="";}
+ function fields(){
+  if(tipo==="saida_antecipada")return <><Field label="Data"><input type="date" required className="control" value={details.data??""} onChange={e=>set("data",e.target.value)}/></Field><Field label="Horário"><input type="time" required className="control" value={details.horario??""} onChange={e=>set("horario",e.target.value)}/></Field><Field label="Motivo"><textarea required className="control min-h-24" value={details.motivo??""} onChange={e=>set("motivo",e.target.value)}/></Field></>;
+  if(tipo==="compra")return <><Field label="Item"><input required className="control" value={details.item??""} onChange={e=>set("item",e.target.value)}/></Field><Field label="Quantidade"><input required type="number" min="1" className="control" value={details.quantidade??""} onChange={e=>set("quantidade",e.target.value)}/></Field><Field label="Valor estimado (R$)"><input required type="number" min="0" step="0.01" className="control" value={details.valor_estimado??""} onChange={e=>set("valor_estimado",e.target.value)}/></Field><Field label="Justificativa"><textarea required className="control min-h-24" value={details.justificativa??""} onChange={e=>set("justificativa",e.target.value)}/></Field></>;
+  if(tipo==="copias")return <><Field label="Quantidade"><input required type="number" min="1" className="control" value={details.quantidade??""} onChange={e=>set("quantidade",e.target.value)}/></Field><Field label="Data necessária"><input required type="date" className="control" value={details.data_necessaria??""} onChange={e=>set("data_necessaria",e.target.value)}/></Field></>;
+  if(tipo==="verba_evento")return <><Field label="Evento"><input required className="control" value={details.evento??""} onChange={e=>set("evento",e.target.value)}/></Field><Field label="Valor"><input required type="number" min="0" step="0.01" className="control" value={details.valor??""} onChange={e=>set("valor",e.target.value)}/></Field><Field label="Justificativa"><textarea required className="control min-h-24" value={details.justificativa??""} onChange={e=>set("justificativa",e.target.value)}/></Field></>;
+  return <><Field label="Material"><input required className="control" value={details.material??""} onChange={e=>set("material",e.target.value)}/></Field><Field label="Quantidade"><input required type="number" min="1" className="control" value={details.quantidade??""} onChange={e=>set("quantidade",e.target.value)}/></Field><Field label="Observação"><textarea className="control min-h-24" value={details.observacao??""} onChange={e=>set("observacao",e.target.value)}/></Field></>;
+ }
+ async function submit(e:React.FormEvent){e.preventDefault();setSaving(true);setError("");try{
+  const {data,error}=await supabase.from("solicitacoes").insert({created_by:userId,tipo,titulo:titulo.trim(),detalhes:details,attachment_paths:[]}).select("id").single();if(error||!data)throw error??new Error("Não foi possível criar.");
+  const paths:string[]=[];for(const f of files){const p=`${data.id}/${crypto.randomUUID()}-${f.name.replace(/[^a-zA-Z0-9._-]/g,"_")}`;const up=await supabase.storage.from("solicitacoes").upload(p,f,{contentType:f.type||"application/octet-stream",upsert:false});if(up.error)throw up.error;paths.push(p);}
+  if(paths.length){const up=await supabase.from("solicitacoes").update({attachment_paths:paths}).eq("id",data.id);if(up.error)throw up.error;}
+  try{await supabase.functions.invoke("send-request-notification",{body:{solicitacaoId:data.id,type:"nova"}});}catch{}
+  await onCreated();
+ }catch(e){setError(e instanceof Error?e.message:"Não foi possível criar a solicitação.");}finally{setSaving(false);}}
+ return <form onSubmit={submit} className="space-y-5"><header className="flex items-center gap-3"><Button type="button" variant="ghost" size="icon" onClick={onCancel} aria-label="Voltar"><X className="size-5"/></Button><div><p className="text-xs font-bold uppercase tracking-wider text-primary">Nova solicitação</p><h1 className="text-2xl font-black">Enviar para análise</h1></div></header><section className="space-y-4 rounded-2xl border bg-card p-4 sm:p-6"><Field label="Tipo"><select className="control" value={tipo} onChange={e=>{setTipo(e.target.value as RequestType);setDetails({});}}>{types.map(t=><option key={t.value} value={t.value}>{t.label}</option>)}</select></Field><Field label="Título curto"><input required minLength={3} maxLength={160} className="control" value={titulo} onChange={e=>setTitulo(e.target.value)} placeholder="Ex.: Material para sala 5"/></Field>{fields()}<div><p className="text-sm font-semibold">Anexos <span className="font-normal text-muted-foreground">(foto ou PDF, até 3)</span></p><Button type="button" variant="outline" className="mt-2" onClick={()=>inputRef.current?.click()} disabled={files.length>=3}><Paperclip className="size-4"/>Adicionar arquivo</Button><input ref={inputRef} hidden type="file" accept="image/*,application/pdf" multiple onChange={addFiles}/>{files.length?<ul className="mt-2 space-y-1 text-xs text-muted-foreground">{files.map((f,i)=><li key={i} className="rounded-lg bg-muted p-2">{f.name}</li>)}</ul>:null}</div>{error?<p role="alert" className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{error}</p>:null}<div className="flex gap-2"><Button type="submit" disabled={saving}>{saving?"Enviando…":"Enviar solicitação"}</Button><Button type="button" variant="outline" onClick={onCancel}>Cancelar</Button></div></section></form>;
+}
+function Field({label,children}:{label:string;children:ReactNode}){return <label className="block space-y-1.5 text-sm font-medium">{label}{children}</label>}
+
+function RequestDetail({request,isDirection,onBack,onChanged}:{request:Solicitation;isDirection:boolean;onBack:()=>void;onChanged:()=>Promise<void>}){
+ const [comment,setComment]=useState("");const [saving,setSaving]=useState(false);const [error,setError]=useState("");const [decisionData,setDecisionData]=useState<Decision|null>(null);const [profile,setProfile]=useState<Profile|null>(null);const [urls,setUrls]=useState<string[]>([]);
+ useEffect(()=>{(async()=>{const {data:d}=await supabase.from("solicitacao_decisoes").select("*").eq("solicitacao_id",request.id).order("created_at",{ascending:false}).limit(1).maybeSingle();if(d)setDecisionData(d as Decision);const {data:p}=await supabase.from("profiles").select("id,full_name,email").eq("id",request.created_by).maybeSingle();setProfile(p as Profile|null);const u=await Promise.all((request.attachment_paths??[]).map(signed));setUrls(u.filter(Boolean) as string[]);})();},[request.id,request.attachment_paths]);
+ async function decide(value:"aprovada"|"negada"){if(value==="negada"&&!comment.trim()){setError("Para negar, informe a justificativa.");return;}setSaving(true);setError("");try{const {error}=await supabase.rpc("decidir_solicitacao",{_solicitacao_id:request.id,_decisao:value,_comentario:comment.trim()||null});if(error)throw error;try{await supabase.functions.invoke("send-request-notification",{body:{solicitacaoId:request.id,type:"decidida"}});}catch{}await onChanged();}catch(e){setError(e instanceof Error?e.message:"Não foi possível registrar a decisão.");}finally{setSaving(false);}}
+ async function cancel(){setSaving(true);setError("");try{const {error}=await supabase.from("solicitacoes").update({status:"cancelada"}).eq("id",request.id);if(error)throw error;await onChanged();}catch(e){setError(e instanceof Error?e.message:"Não foi possível cancelar.");}finally{setSaving(false);}}
+ return <div className="space-y-5"><header className="flex items-start gap-3"><Button variant="ghost" size="icon" onClick={onBack} aria-label="Voltar"><X className="size-5"/></Button><div className="min-w-0 flex-1"><p className="text-xs font-bold uppercase tracking-wider text-primary">{typeLabel(request.tipo)}</p><h1 className="mt-1 text-2xl font-black">{request.titulo}</h1><p className="mt-1 text-sm text-muted-foreground">{profile?.full_name??"Usuário"} · {dateTime(request.created_at)}</p></div><span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-bold">{labels[request.status]}</span></header>
+ <section className="space-y-3 rounded-2xl border bg-card p-4 sm:p-6"><h2 className="font-bold">Dados</h2>{Object.entries(request.detalhes).map(([k,v])=><div key={k} className="flex justify-between gap-4 border-b py-2 text-sm last:border-0"><span className="text-muted-foreground">{k}</span><span className="text-right font-medium">{String(v)}</span></div>)}{urls.length?<div><h3 className="mt-3 font-bold">Anexos</h3><div className="mt-2 flex flex-wrap gap-2">{urls.map((url,i)=><a key={url} href={url} target="_blank" rel="noreferrer" className="rounded-lg border px-3 py-2 text-sm text-primary">{request.attachment_paths[i]?.toLowerCase().endsWith(".pdf")?"PDF":"Imagem"} {i+1}</a>)}</div></div>:null}</section>
+ {isDirection&&request.status==="pendente"?<section className="space-y-3 rounded-2xl border bg-card p-4 sm:p-5"><h2 className="font-bold">Decisão</h2><textarea className="w-full rounded-lg border bg-background p-3 text-sm" rows={3} placeholder="Comentário opcional; justificativa obrigatória ao negar." value={comment} onChange={e=>setComment(e.target.value)}/><div className="grid grid-cols-2 gap-2"><Button disabled={saving} onClick={()=>decide("aprovada")}><Check className="size-4"/>Aprovar</Button><Button disabled={saving} variant="destructive" onClick={()=>decide("negada")}>Negar</Button></div>{error?<p role="alert" className="text-sm text-destructive">{error}</p>:null}</section>:null}
+ {!isDirection&&request.status==="pendente"?<Button variant="outline" disabled={saving} onClick={cancel}>Cancelar solicitação</Button>:null}
+ {decisionData?<section className="rounded-2xl border bg-card p-4"><h2 className="font-bold">Decisão registrada</h2><p className="mt-2 text-sm">{labels[decisionData.decisao]} · {dateTime(decisionData.created_at)}</p>{decisionData.comentario?<p className="mt-2 text-sm text-muted-foreground">{decisionData.comentario}</p>:null}</section>:null}
+ </div>;
+}
