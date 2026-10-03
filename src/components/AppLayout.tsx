@@ -12,7 +12,8 @@ function NavLinks({ isAdmin, orientation }: { isAdmin: boolean; orientation: "bo
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const items = [
     { to: "/home", label: "Início", icon: Sun, exact: true },
-    { to: "/chamados", label: "Chamados", icon: ClipboardList, exact: false },\n    { to: "/solicitacoes", label: "Solicitações", icon: FileCheck2, exact: false },
+    { to: "/chamados", label: "Chamados", icon: ClipboardList, exact: false },
+    { to: "/solicitacoes", label: "Solicitações", icon: FileCheck2, exact: false },
     ...(isAdmin ? [
       { to: "/admin/pessoas", label: "Pessoas", icon: Users, exact: false },
       { to: "/admin/setores", label: "Setores", icon: Building2, exact: false },

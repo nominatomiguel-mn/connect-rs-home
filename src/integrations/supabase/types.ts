@@ -41,51 +41,6 @@ export type Database = {
         }
         Relationships: []
       }
-      pessoas_autorizadas: {
-        Row: {
-          ativo: boolean
-          created_at: string
-          email: string
-          id: string
-          nome: string
-          papel: Database["public"]["Enums"]["app_role"]
-          setores: string[]
-          updated_at: string
-        }
-        Insert: {
-          ativo?: boolean
-          created_at?: string
-          email: string
-          id?: string
-          nome: string
-          papel?: Database["public"]["Enums"]["app_role"]
-          setores?: string[]
-          updated_at?: string
-        }
-        Update: {
-          ativo?: boolean
-          created_at?: string
-          email?: string
-          id?: string
-          nome?: string
-          papel?: Database["public"]["Enums"]["app_role"]
-          setores?: string[]
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      solicitacoes: {
-        Row: { attachment_paths: string[]; created_at: string; created_by: string; decided_at: string | null; detalhes: Json; id: string; status: Database["public"]["Enums"]["request_status"]; tipo: Database["public"]["Enums"]["request_type"]; titulo: string; updated_at: string }
-        Insert: { attachment_paths?: string[]; created_at?: string; created_by: string; decided_at?: string | null; detalhes?: Json; id?: string; status?: Database["public"]["Enums"]["request_status"]; tipo: Database["public"]["Enums"]["request_type"]; titulo: string; updated_at?: string }
-        Update: { attachment_paths?: string[]; created_at?: string; created_by?: string; decided_at?: string | null; detalhes?: Json; id?: string; status?: Database["public"]["Enums"]["request_status"]; tipo?: Database["public"]["Enums"]["request_type"]; titulo?: string; updated_at?: string }
-        Relationships: []
-      }
-      solicitacao_decisoes: {
-        Row: { comentario: string | null; created_at: string; decisao: "aprovada" | "negada"; decidido_por: string; id: string; solicitacao_id: string }
-        Insert: { comentario?: string | null; created_at?: string; decisao: "aprovada" | "negada"; decidido_por: string; id?: string; solicitacao_id: string }
-        Update: { comentario?: string | null; created_at?: string; decisao?: "aprovada" | "negada"; decidido_por?: string; id?: string; solicitacao_id?: string }
-        Relationships: [{ foreignKeyName: "solicitacao_decisoes_solicitacao_id_fkey"; columns: ["solicitacao_id"]; isOneToOne: false; referencedRelation: "solicitacoes"; referencedColumns: ["id"] }]
-      }
       profiles: {
         Row: {
           created_at: string
@@ -151,6 +106,80 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string
+        }
+        Relationships: []
+      }
+      solicitacao_decisoes: {
+        Row: {
+          comentario: string | null
+          created_at: string
+          decidido_por: string
+          decisao: Database["public"]["Enums"]["request_status"]
+          id: string
+          solicitacao_id: string
+        }
+        Insert: {
+          comentario?: string | null
+          created_at?: string
+          decidido_por: string
+          decisao: Database["public"]["Enums"]["request_status"]
+          id?: string
+          solicitacao_id: string
+        }
+        Update: {
+          comentario?: string | null
+          created_at?: string
+          decidido_por?: string
+          decisao?: Database["public"]["Enums"]["request_status"]
+          id?: string
+          solicitacao_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "solicitacao_decisoes_solicitacao_id_fkey"
+            columns: ["solicitacao_id"]
+            isOneToOne: false
+            referencedRelation: "solicitacoes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      solicitacoes: {
+        Row: {
+          attachment_paths: string[]
+          created_at: string
+          created_by: string
+          decided_at: string | null
+          detalhes: Json
+          id: string
+          status: Database["public"]["Enums"]["request_status"]
+          tipo: Database["public"]["Enums"]["request_type"]
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          attachment_paths?: string[]
+          created_at?: string
+          created_by: string
+          decided_at?: string | null
+          detalhes?: Json
+          id?: string
+          status?: Database["public"]["Enums"]["request_status"]
+          tipo: Database["public"]["Enums"]["request_type"]
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          attachment_paths?: string[]
+          created_at?: string
+          created_by?: string
+          decided_at?: string | null
+          detalhes?: Json
+          id?: string
+          status?: Database["public"]["Enums"]["request_status"]
+          tipo?: Database["public"]["Enums"]["request_type"]
+          titulo?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -283,35 +312,6 @@ export type Database = {
           },
         ]
       }
-      user_sectors: {
-        Row: {
-          created_at: string
-          id: string
-          sector_id: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          sector_id: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          sector_id?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "user_sectors_sector_id_fkey"
-            columns: ["sector_id"]
-            isOneToOne: false
-            referencedRelation: "sectors"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       user_roles: {
         Row: {
           id: string
@@ -335,9 +335,30 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      decidir_solicitacao: { Args: { _comentario?: string | null; _decisao: Database["public"]["Enums"]["request_status"]; _solicitacao_id: string }; Returns: Database["public"]["Tables"]["solicitacao_decisoes"]["Row"] }\n      can_view_ticket: {
+      can_view_ticket: {
         Args: { _ticket_id: string; _user_id: string }
         Returns: boolean
+      }
+      decidir_solicitacao: {
+        Args: {
+          _comentario?: string
+          _decisao: Database["public"]["Enums"]["request_status"]
+          _solicitacao_id: string
+        }
+        Returns: {
+          comentario: string | null
+          created_at: string
+          decidido_por: string
+          decisao: Database["public"]["Enums"]["request_status"]
+          id: string
+          solicitacao_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "solicitacao_decisoes"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       has_role: {
         Args: {
@@ -346,11 +367,22 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_active_authorized_user: {
+        Args: { _user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role: "admin" | "direcao" | "responsavel" | "colaborador"
+      request_status: "pendente" | "aprovada" | "negada" | "cancelada"
+      request_type:
+        | "material"
+        | "copias"
+        | "compra"
+        | "saida_antecipada"
+        | "verba_evento"
       ticket_priority: "normal" | "urgente"
-      ticket_status: "aberto" | "em_andamento" | "resolvido"\n      request_type: "material" | "copias" | "compra" | "saida_antecipada" | "verba_evento"\n      request_status: "pendente" | "aprovada" | "negada" | "cancelada"
+      ticket_status: "aberto" | "em_andamento" | "resolvido"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -479,6 +511,14 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "direcao", "responsavel", "colaborador"],
+      request_status: ["pendente", "aprovada", "negada", "cancelada"],
+      request_type: [
+        "material",
+        "copias",
+        "compra",
+        "saida_antecipada",
+        "verba_evento",
+      ],
       ticket_priority: ["normal", "urgente"],
       ticket_status: ["aberto", "em_andamento", "resolvido"],
     },
