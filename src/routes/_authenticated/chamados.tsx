@@ -236,7 +236,7 @@ function historyLabel(item: History) {
   if (item.event === "chamado_criado") return "abriu o chamado.";
   if (item.event === "comentario_adicionado") return "adicionou um comentário.";
   if (item.event === "status_alterado") {
-    const from = String(item.details?.de ?? ""); const to = String(item.details?.para ?? "");
+    const from = String(item.details?.["de"] ?? ""); const to = String(item.details?.["para"] ?? "");
     return `alterou o status de ${statusLabel[from as Ticket["status"]] ?? from} para ${statusLabel[to as Ticket["status"]] ?? to}.`;
   }
   return "atualizou o chamado.";
