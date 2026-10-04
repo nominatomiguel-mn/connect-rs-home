@@ -28,7 +28,12 @@ function AuthPage() {
         const { data, error: authError } = await supabase.auth.signUp({ email: normalizedEmail, password });
         if (authError) {
           const lower = authError.message.toLowerCase();
-          if (lower.includes("não autorizado") || lower.includes("not authorized") || lower.includes("e-mail")) throw new Error("Este e-mail não está autorizado. Peça ao administrador para incluí-lo na lista de pessoas.");
+          if (lower.includes("não autorizado") || lower.includes("not authorized") || lower.includes("e-mail")) {
+            throw new Error("Este e-mail não está autorizado ou está inativo. Peça ao administrador para conferir a lista de pessoas autorizadas.");
+          }
+          if (lower.includes("database error saving new user") || lower.includes("unexpected_failure") || lower.includes("500")) {
+            throw new Error("O Supabase não conseguiu concluir o cadastro. Confira se a migração de autorização foi aplicada no projeto Supabase correto e tente novamente. Se persistir, consulte os logs de Auth no Supabase.");
+          }
           throw authError;
         }
         if (data.session) await navigate({ to: "/home" });
