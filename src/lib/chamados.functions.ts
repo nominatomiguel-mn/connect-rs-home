@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import type { Database } from "@/integrations/supabase/types";
 import { sendEmail, emailLayout, escapeHtml } from "./email.server";
 
 const statusFilter = z.enum(["aberto", "em_andamento", "resolvido", "todos"]);
@@ -224,25 +225,32 @@ async function notifyNewTicket(ticketId: string): Promise<void> {
     );
     const { data: ticket } = await supabaseAdmin
       .from("tickets")
-      .select(
-        "title, priority, location, sector_id, sector:sectors(name), creator:profiles!tickets_created_by_fkey(full_name)",
-      )
+      .select("title, priority, location, sector_id, created_by, sector:sectors(name)")
       .eq("id", ticketId)
       .maybeSingle();
     if (!ticket) return;
     const { data: responsibles } = await supabaseAdmin
       .from("sector_responsibles")
-      .select("profile:profiles!sector_responsibles_user_id_fkey(email, full_name)")
+      .select("user_id")
       .eq("sector_id", ticket.sector_id);
-    const recipients = (responsibles ?? [])
-      .map((r) => r.profile?.email)
+    const responsibleIds = (responsibles ?? []).map((r) => r.user_id);
+    const { data: profiles } = await supabaseAdmin
+      .from("profiles")
+      .select("id, full_name, email")
+      .in("id", [...responsibleIds, ticket.created_by]);
+    const recipients = (profiles ?? [])
+      .filter((p) => responsibleIds.includes(p.id))
+      .map((p) => p.email)
       .filter((e): e is string => !!e);
+    const creatorName =
+      (profiles ?? []).find((p) => p.id === ticket.created_by)?.full_name ??
+      "alguém da escola";
     const sectorName = ticket.sector?.name ?? "";
     const priority = ticket.priority === "urgente" ? "URGENTE" : "normal";
     const html = emailLayout(
       `Novo chamado em ${escapeHtml(sectorName)}`,
       `<p><strong>${escapeHtml(ticket.title)}</strong> (prioridade: ${priority})</p>
-       <p>Aberto por ${escapeHtml(ticket.creator?.full_name ?? "alguém da escola")}${ticket.location ? `, local: ${escapeHtml(ticket.location)}` : ""}.</p>
+       <p>Aberto por ${escapeHtml(creatorName)}${ticket.location ? `, local: ${escapeHtml(ticket.location)}` : ""}.</p>
        <p>Abra o app RS CONECT para atender.</p>`,
     );
     await Promise.all(
@@ -265,13 +273,17 @@ async function notifyStatusChange(
     );
     const { data: ticket } = await supabaseAdmin
       .from("tickets")
-      .select(
-        "title, status, creator:profiles!tickets_created_by_fkey(email, full_name)",
-      )
+      .select("title, status, created_by")
       .eq("id", ticketId)
       .maybeSingle();
-    const to = ticket?.creator?.email;
-    if (!ticket || !to) return;
+    if (!ticket) return;
+    const { data: creator } = await supabaseAdmin
+      .from("profiles")
+      .select("email")
+      .eq("id", ticket.created_by)
+      .maybeSingle();
+    const to = creator?.email;
+    if (!to) return;
     const labels: Record<string, string> = {
       aberto: "Aberto",
       em_andamento: "Em andamento",
