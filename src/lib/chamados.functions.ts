@@ -32,7 +32,7 @@ export const listTickets = createServerFn({ method: "GET" })
     let query = context.supabase
       .from("tickets")
       .select(
-        "id, title, location, priority, status, created_at, resolved_at, sector:sectors(name), creator:profiles!tickets_created_by_fkey(full_name)",
+        "id, title, location, priority, status, created_at, resolved_at, created_by, sector:sectors(name)",
       )
       .order("priority", { ascending: false })
       .order("created_at", { ascending: false });
@@ -40,7 +40,18 @@ export const listTickets = createServerFn({ method: "GET" })
     if (data.urgente) query = query.eq("priority", "urgente");
     const { data: tickets, error } = await query;
     if (error) throw new Error("Não foi possível carregar os chamados.");
-    return tickets;
+    const creatorIds = [...new Set((tickets ?? []).map((t) => t.created_by))];
+    const { data: creators } = creatorIds.length
+      ? await context.supabase
+          .from("profiles")
+          .select("id, full_name")
+          .in("id", creatorIds)
+      : { data: [] as { id: string; full_name: string }[] };
+    const nameById = new Map((creators ?? []).map((p) => [p.id, p.full_name]));
+    return (tickets ?? []).map((t) => ({
+      ...t,
+      creator: { full_name: nameById.get(t.created_by) ?? "Usuário" },
+    }));
   });
 
 export const getTicket = createServerFn({ method: "GET" })
@@ -52,9 +63,7 @@ export const getTicket = createServerFn({ method: "GET" })
     const sb = context.supabase;
     const { data: ticket, error } = await sb
       .from("tickets")
-      .select(
-        "*, sector:sectors(id, name), creator:profiles!tickets_created_by_fkey(id, full_name)",
-      )
+      .select("*, sector:sectors(id, name)")
       .eq("id", data.id)
       .maybeSingle();
     if (error || !ticket) {
@@ -63,19 +72,43 @@ export const getTicket = createServerFn({ method: "GET" })
     const [commentsRes, historyRes] = await Promise.all([
       sb
         .from("ticket_comments")
-        .select("*, author:profiles!ticket_comments_author_id_fkey(full_name)")
+        .select("*")
         .eq("ticket_id", data.id)
         .order("created_at", { ascending: true }),
       sb
         .from("ticket_history")
-        .select("*, actor:profiles!ticket_history_actor_id_fkey(full_name)")
+        .select("*")
         .eq("ticket_id", data.id)
         .order("created_at", { ascending: true }),
     ]);
+    const userIds = [
+      ...new Set([
+        ticket.created_by,
+        ...(commentsRes.data ?? []).map((c) => c.author_id),
+        ...(historyRes.data ?? [])
+          .map((h) => h.actor_id)
+          .filter((id): id is string => !!id),
+      ]),
+    ];
+    const { data: profiles } = userIds.length
+      ? await sb.from("profiles").select("id, full_name").in("id", userIds)
+      : { data: [] as { id: string; full_name: string }[] };
+    const nameById = new Map((profiles ?? []).map((p) => [p.id, p.full_name]));
     return {
-      ticket,
-      comments: commentsRes.data ?? [],
-      history: historyRes.data ?? [],
+      ticket: {
+        ...ticket,
+        creator: { full_name: nameById.get(ticket.created_by) ?? "Usuário" },
+      },
+      comments: (commentsRes.data ?? []).map((c) => ({
+        ...c,
+        author: { full_name: nameById.get(c.author_id) ?? "Usuário" },
+      })),
+      history: (historyRes.data ?? []).map((h) => ({
+        ...h,
+        actor: h.actor_id
+          ? { full_name: nameById.get(h.actor_id) ?? "Usuário" }
+          : null,
+      })),
     };
   });
 
@@ -129,11 +162,13 @@ export const updateTicketStatus = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ context, data }) => {
-    const patch: Record<string, unknown> = { status: data.status };
+    const patch: Database["public"]["Tables"]["tickets"]["Update"] = {
+      status: data.status,
+    };
     if (data.status === "resolvido") {
-      if (data.solution_comment) patch.solution_comment = data.solution_comment;
-      if (data.solution_photo) patch.solution_photo = data.solution_photo;
-patch.resolved_at = new Date().toISOString();
+      if (data.solution_comment) patch["solution_comment"] = data.solution_comment;
+      if (data.solution_photo) patch["solution_photo"] = data.solution_photo;
+      patch["resolved_at"] = new Date().toISOString();
     }
     const { error } = await context.supabase
       .from("tickets")
