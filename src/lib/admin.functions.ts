@@ -101,11 +101,7 @@ export const getAdminData = createServerFn({ method: "GET" })
     await requireAdmin(context.supabase, context.userId);
     const [sectorsRes, respRes, profilesRes, rolesRes] = await Promise.all([
       context.supabase.from("sectors").select("*").order("name"),
-      context.supabase
-        .from("sector_responsibles")
-        .select(
-          "sector_id, user_id, profile:profiles!sector_responsibles_user_id_fkey(full_name, email)",
-        ),
+      context.supabase.from("sector_responsibles").select("sector_id, user_id"),
       context.supabase
         .from("profiles")
         .select("id, full_name, email")
@@ -113,6 +109,10 @@ export const getAdminData = createServerFn({ method: "GET" })
       context.supabase.from("user_roles").select("user_id, role"),
     ]);
     if (sectorsRes.error) throw new Error("Não foi possível carregar os setores.");
+
+    const profileById = new Map(
+      (profilesRes.data ?? []).map((p) => [p.id, p]),
+    );
 
     const rolesByUser = new Map<string, string[]>();
     for (const r of rolesRes.data ?? []) {
@@ -124,11 +124,12 @@ export const getAdminData = createServerFn({ method: "GET" })
     const responsiblesBySector = new Map<string, AdminData["sectors"][number]["responsibles"]>();
     for (const r of respRes.data ?? []) {
       const list = responsiblesBySector.get(r.sector_id) ?? [];
-      if (r.profile) {
+      const profile = profileById.get(r.user_id);
+      if (profile) {
         list.push({
           user_id: r.user_id,
-          full_name: r.profile.full_name,
-          email: r.profile.email,
+          full_name: profile.full_name,
+          email: profile.email,
         });
       }
       responsiblesBySector.set(r.sector_id, list);
@@ -198,9 +199,9 @@ export const updateSector = createServerFn({ method: "POST" })
   )
   .handler(async ({ context, data }) => {
     await requireAdmin(context.supabase, context.userId);
-    const patch: Record<string, unknown> = {};
-    if (data.name !== undefined) patch.name = data.name;
-    if (data.active !== undefined) patch.active = data.active;
+    const patch: Database["public"]["Tables"]["sectors"]["Update"] = {};
+    if (data.name !== undefined) patch["name"] = data.name;
+    if (data.active !== undefined) patch["active"] = data.active;
     if (Object.keys(patch).length === 0) return { ok: true };
     const { error } = await context.supabase
       .from("sectors")

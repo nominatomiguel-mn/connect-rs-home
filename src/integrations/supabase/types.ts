@@ -95,8 +95,8 @@ export type Database = {
           canceled_by: string | null
           created_at: string
           created_by: string
-          finalidade: string
           fim: string
+          finalidade: string
           id: string
           inicio: string
           recurso_id: string
@@ -108,8 +108,8 @@ export type Database = {
           canceled_by?: string | null
           created_at?: string
           created_by: string
-          finalidade: string
           fim: string
+          finalidade: string
           id?: string
           inicio: string
           recurso_id: string
@@ -121,8 +121,8 @@ export type Database = {
           canceled_by?: string | null
           created_at?: string
           created_by?: string
-          finalidade?: string
           fim?: string
+          finalidade?: string
           id?: string
           inicio?: string
           recurso_id?: string
@@ -416,6 +416,56 @@ export type Database = {
         Args: { _ticket_id: string; _user_id: string }
         Returns: boolean
       }
+      cancelar_reserva: {
+        Args: { _reserva_id: string }
+        Returns: {
+          canceled_at: string | null
+          canceled_by: string | null
+          created_at: string
+          created_by: string
+          fim: string
+          finalidade: string
+          id: string
+          inicio: string
+          recurso_id: string
+          status: Database["public"]["Enums"]["reservation_status"]
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "reservas"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      criar_reservas: {
+        Args: {
+          _fim: string
+          _finalidade: string
+          _inicio: string
+          _ocorrencias?: number
+          _recurso_id: string
+        }
+        Returns: {
+          canceled_at: string | null
+          canceled_by: string | null
+          created_at: string
+          created_by: string
+          fim: string
+          finalidade: string
+          id: string
+          inicio: string
+          recurso_id: string
+          status: Database["public"]["Enums"]["reservation_status"]
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "reservas"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       decidir_solicitacao: {
         Args: {
           _comentario?: string
@@ -437,31 +487,6 @@ export type Database = {
           isSetofReturn: false
         }
       }
-      cancelar_reserva: {
-        Args: { _reserva_id: string }
-        Returns: Database["public"]["Tables"]["reservas"]["Row"]
-        SetofOptions: { from: "*"; to: "reservas"; isOneToOne: true; isSetofReturn: false }
-      }
-      criar_reservas: {
-        Args: { _fim: string; _finalidade: string; _inicio: string; _ocorrencias?: number; _recurso_id: string }
-        Returns: Database["public"]["Tables"]["reservas"]["Row"]
-        SetofOptions: { from: "*"; to: "reservas"; isOneToOne: false; isSetofReturn: true }
-      }
-      listar_reservas: {
-        Args: { _fim: string; _inicio: string }
-        Returns: {
-          id: string
-          recurso_id: string
-          created_by: string
-          inicio: string
-          fim: string
-          finalidade: string
-          status: Database["public"]["Enums"]["reservation_status"]
-          created_at: string
-          reservante_nome: string
-        }[]
-        SetofOptions: { from: "*"; to: null; isOneToOne: false; isSetofReturn: true }
-      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -473,18 +498,32 @@ export type Database = {
         Args: { _user_id: string }
         Returns: boolean
       }
+      listar_reservas: {
+        Args: { _fim: string; _inicio: string }
+        Returns: {
+          created_at: string
+          created_by: string
+          fim: string
+          finalidade: string
+          id: string
+          inicio: string
+          recurso_id: string
+          reservante_nome: string
+          status: Database["public"]["Enums"]["reservation_status"]
+        }[]
+      }
     }
     Enums: {
       app_role: "admin" | "direcao" | "responsavel" | "colaborador"
       request_status: "pendente" | "aprovada" | "negada" | "cancelada"
-      reservation_status: "ativa" | "cancelada"
-      resource_category: "espaco" | "equipamento"
       request_type:
         | "material"
         | "copias"
         | "compra"
         | "saida_antecipada"
         | "verba_evento"
+      reservation_status: "ativa" | "cancelada"
+      resource_category: "espaco" | "equipamento"
       ticket_priority: "normal" | "urgente"
       ticket_status: "aberto" | "em_andamento" | "resolvido"
     }
@@ -623,6 +662,8 @@ export const Constants = {
         "saida_antecipada",
         "verba_evento",
       ],
+      reservation_status: ["ativa", "cancelada"],
+      resource_category: ["espaco", "equipamento"],
       ticket_priority: ["normal", "urgente"],
       ticket_status: ["aberto", "em_andamento", "resolvido"],
     },

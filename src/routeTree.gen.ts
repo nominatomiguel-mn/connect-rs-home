@@ -14,8 +14,8 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedChamadosRouteImport } from './routes/_authenticated/chamados'
 import { Route as AuthenticatedHomeRouteImport } from './routes/_authenticated/home'
-import { Route as AuthenticatedSolicitacoesRouteImport } from './routes/_authenticated/solicitacoes'
 import { Route as AuthenticatedReservasRouteImport } from './routes/_authenticated/reservas'
+import { Route as AuthenticatedSolicitacoesRouteImport } from './routes/_authenticated/solicitacoes'
 import { Route as AuthenticatedAdminPessoasRouteImport } from './routes/_authenticated/admin/pessoas'
 import { Route as AuthenticatedAdminSetoresRouteImport } from './routes/_authenticated/admin/setores'
 
@@ -43,17 +43,17 @@ const AuthenticatedHomeRoute = AuthenticatedHomeRouteImport.update({
   path: '/home',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedReservasRoute = AuthenticatedReservasRouteImport.update({
+  id: '/reservas',
+  path: '/reservas',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedSolicitacoesRoute =
   AuthenticatedSolicitacoesRouteImport.update({
     id: '/solicitacoes',
     path: '/solicitacoes',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const AuthenticatedReservasRoute = AuthenticatedReservasRouteImport.update({
-  id: '/reservas',
-  path: '/reservas',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
 const AuthenticatedAdminPessoasRoute =
   AuthenticatedAdminPessoasRouteImport.update({
     id: '/admin/pessoas',
@@ -72,8 +72,8 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/chamados': typeof AuthenticatedChamadosRoute
   '/home': typeof AuthenticatedHomeRoute
-  '/solicitacoes': typeof AuthenticatedSolicitacoesRoute
   '/reservas': typeof AuthenticatedReservasRoute
+  '/solicitacoes': typeof AuthenticatedSolicitacoesRoute
   '/admin/pessoas': typeof AuthenticatedAdminPessoasRoute
   '/admin/setores': typeof AuthenticatedAdminSetoresRoute
 }
@@ -82,8 +82,8 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/chamados': typeof AuthenticatedChamadosRoute
   '/home': typeof AuthenticatedHomeRoute
-  '/solicitacoes': typeof AuthenticatedSolicitacoesRoute
   '/reservas': typeof AuthenticatedReservasRoute
+  '/solicitacoes': typeof AuthenticatedSolicitacoesRoute
   '/admin/pessoas': typeof AuthenticatedAdminPessoasRoute
   '/admin/setores': typeof AuthenticatedAdminSetoresRoute
 }
@@ -94,8 +94,8 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/_authenticated/chamados': typeof AuthenticatedChamadosRoute
   '/_authenticated/home': typeof AuthenticatedHomeRoute
-  '/_authenticated/solicitacoes': typeof AuthenticatedSolicitacoesRoute
   '/_authenticated/reservas': typeof AuthenticatedReservasRoute
+  '/_authenticated/solicitacoes': typeof AuthenticatedSolicitacoesRoute
   '/_authenticated/admin/pessoas': typeof AuthenticatedAdminPessoasRoute
   '/_authenticated/admin/setores': typeof AuthenticatedAdminSetoresRoute
 }
@@ -106,8 +106,8 @@ export interface FileRouteTypes {
     | '/auth'
     | '/chamados'
     | '/home'
-    | '/solicitacoes'
     | '/reservas'
+    | '/solicitacoes'
     | '/admin/pessoas'
     | '/admin/setores'
   fileRoutesByTo: FileRoutesByTo
@@ -116,8 +116,8 @@ export interface FileRouteTypes {
     | '/auth'
     | '/chamados'
     | '/home'
-    | '/solicitacoes'
     | '/reservas'
+    | '/solicitacoes'
     | '/admin/pessoas'
     | '/admin/setores'
   id:
@@ -127,8 +127,8 @@ export interface FileRouteTypes {
     | '/auth'
     | '/_authenticated/chamados'
     | '/_authenticated/home'
-    | '/_authenticated/solicitacoes'
     | '/_authenticated/reservas'
+    | '/_authenticated/solicitacoes'
     | '/_authenticated/admin/pessoas'
     | '/_authenticated/admin/setores'
   fileRoutesById: FileRoutesById
@@ -210,8 +210,8 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedChamadosRoute: typeof AuthenticatedChamadosRoute
   AuthenticatedHomeRoute: typeof AuthenticatedHomeRoute
-  AuthenticatedSolicitacoesRoute: typeof AuthenticatedSolicitacoesRoute
   AuthenticatedReservasRoute: typeof AuthenticatedReservasRoute
+  AuthenticatedSolicitacoesRoute: typeof AuthenticatedSolicitacoesRoute
   AuthenticatedAdminPessoasRoute: typeof AuthenticatedAdminPessoasRoute
   AuthenticatedAdminSetoresRoute: typeof AuthenticatedAdminSetoresRoute
 }
@@ -219,8 +219,8 @@ interface AuthenticatedRouteRouteChildren {
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedChamadosRoute: AuthenticatedChamadosRoute,
   AuthenticatedHomeRoute: AuthenticatedHomeRoute,
-  AuthenticatedSolicitacoesRoute: AuthenticatedSolicitacoesRoute,
   AuthenticatedReservasRoute: AuthenticatedReservasRoute,
+  AuthenticatedSolicitacoesRoute: AuthenticatedSolicitacoesRoute,
   AuthenticatedAdminPessoasRoute: AuthenticatedAdminPessoasRoute,
   AuthenticatedAdminSetoresRoute: AuthenticatedAdminSetoresRoute,
 }

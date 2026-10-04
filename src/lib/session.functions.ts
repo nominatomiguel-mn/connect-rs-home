@@ -7,7 +7,6 @@ export type SessionInfo = {
   fullName: string;
   roles: string[];
   responsibleSectors: { id: string; name: string }[];
-  sectors: { id: string; name: string }[];
 };
 
 export const getSession = createServerFn({ method: "GET" })
@@ -16,26 +15,24 @@ export const getSession = createServerFn({ method: "GET" })
     const { supabase, userId, claims } = context;
     const email = (claims?.email as string | undefined) ?? null;
 
-    const [profileRes, rolesRes, respRes, sectorsRes] = await Promise.all([
+    const [profileRes, rolesRes, respRes] = await Promise.all([
       supabase.from("profiles").select("full_name").eq("id", userId).maybeSingle(),
       supabase.from("user_roles").select("role").eq("user_id", userId),
       supabase
         .from("sector_responsibles")
-        .select("sector_id, sector:sectors(id, name)")
-        .eq("user_id", userId),
-      supabase
-        .from("user_sectors")
-        .select("sector_id, sector:sectors(id, name)")
+        .select("sector_id")
         .eq("user_id", userId),
     ]);
 
-    const responsibleSectors = (respRes.data ?? [])
-      .map((r) => ({ id: r.sector_id, name: r.sector?.name ?? "" }))
-      .filter((s) => s.name);
+    const sectorIds = (respRes.data ?? []).map((r) => r.sector_id);
+    const { data: sectorRows } = sectorIds.length
+      ? await supabase.from("sectors").select("id, name").in("id", sectorIds)
+      : { data: [] as { id: string; name: string }[] };
+    const nameById = new Map((sectorRows ?? []).map((s) => [s.id, s.name]));
 
-    const sectors = (sectorsRes.data ?? [])
-      .map((r) => ({ id: r.sector_id, name: r.sector?.name ?? "" }))
-      .filter((sector) => sector.name);
+    const responsibleSectors = sectorIds
+      .map((id) => ({ id, name: nameById.get(id) ?? "" }))
+      .filter((s) => s.name);
 
     return {
       userId,
@@ -43,7 +40,6 @@ export const getSession = createServerFn({ method: "GET" })
       fullName: profileRes.data?.full_name ?? email ?? "Usuário",
       roles: (rolesRes.data ?? []).map((r) => r.role),
       responsibleSectors,
-      sectors,
     };
   });
 

@@ -1,7 +1,7 @@
 import { type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useServerFn, useRouterState } from "@tanstack/react-start";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { Building2, CalendarDays, ClipboardList, FileCheck2, LogOut, ShieldCheck, Sun, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { getSession } from "@/lib/session.functions";
@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
 function NavLinks({ isAdmin, orientation }: { isAdmin: boolean; orientation: "bottom" | "sidebar" }) {
-  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const pathname = useRouterState({ select: (state: { location: { pathname: string } }) => state.location.pathname });
   const items = [
     { to: "/home", label: "Início", icon: Sun, exact: true },
     { to: "/chamados", label: "Chamados", icon: ClipboardList, exact: false },
