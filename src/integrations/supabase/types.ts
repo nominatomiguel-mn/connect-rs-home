@@ -62,6 +62,83 @@ export type Database = {
         }
         Relationships: []
       }
+      recursos_reserva: {
+        Row: {
+          ativo: boolean
+          categoria: Database["public"]["Enums"]["resource_category"]
+          created_at: string
+          id: string
+          nome: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          categoria: Database["public"]["Enums"]["resource_category"]
+          created_at?: string
+          id?: string
+          nome: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          categoria?: Database["public"]["Enums"]["resource_category"]
+          created_at?: string
+          id?: string
+          nome?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      reservas: {
+        Row: {
+          canceled_at: string | null
+          canceled_by: string | null
+          created_at: string
+          created_by: string
+          fim: string
+          finalidade: string
+          id: string
+          inicio: string
+          recurso_id: string
+          status: Database["public"]["Enums"]["reservation_status"]
+          updated_at: string
+        }
+        Insert: {
+          canceled_at?: string | null
+          canceled_by?: string | null
+          created_at?: string
+          created_by: string
+          fim: string
+          finalidade: string
+          id?: string
+          inicio: string
+          recurso_id: string
+          status?: Database["public"]["Enums"]["reservation_status"]
+          updated_at?: string
+        }
+        Update: {
+          canceled_at?: string | null
+          canceled_by?: string | null
+          created_at?: string
+          created_by?: string
+          fim?: string
+          finalidade?: string
+          id?: string
+          inicio?: string
+          recurso_id?: string
+          status?: Database["public"]["Enums"]["reservation_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reservas_recurso_id_fkey"
+            columns: ["recurso_id"]
+            isOneToOne: false
+            referencedRelation: "recursos_reserva"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sector_responsibles: {
         Row: {
           id: string
@@ -339,6 +416,56 @@ export type Database = {
         Args: { _ticket_id: string; _user_id: string }
         Returns: boolean
       }
+      cancelar_reserva: {
+        Args: { _reserva_id: string }
+        Returns: {
+          canceled_at: string | null
+          canceled_by: string | null
+          created_at: string
+          created_by: string
+          fim: string
+          finalidade: string
+          id: string
+          inicio: string
+          recurso_id: string
+          status: Database["public"]["Enums"]["reservation_status"]
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "reservas"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      criar_reservas: {
+        Args: {
+          _fim: string
+          _finalidade: string
+          _inicio: string
+          _ocorrencias?: number
+          _recurso_id: string
+        }
+        Returns: {
+          canceled_at: string | null
+          canceled_by: string | null
+          created_at: string
+          created_by: string
+          fim: string
+          finalidade: string
+          id: string
+          inicio: string
+          recurso_id: string
+          status: Database["public"]["Enums"]["reservation_status"]
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "reservas"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       decidir_solicitacao: {
         Args: {
           _comentario?: string
@@ -371,6 +498,20 @@ export type Database = {
         Args: { _user_id: string }
         Returns: boolean
       }
+      listar_reservas: {
+        Args: { _fim: string; _inicio: string }
+        Returns: {
+          created_at: string
+          created_by: string
+          fim: string
+          finalidade: string
+          id: string
+          inicio: string
+          recurso_id: string
+          reservante_nome: string
+          status: Database["public"]["Enums"]["reservation_status"]
+        }[]
+      }
     }
     Enums: {
       app_role: "admin" | "direcao" | "responsavel" | "colaborador"
@@ -381,6 +522,8 @@ export type Database = {
         | "compra"
         | "saida_antecipada"
         | "verba_evento"
+      reservation_status: "ativa" | "cancelada"
+      resource_category: "espaco" | "equipamento"
       ticket_priority: "normal" | "urgente"
       ticket_status: "aberto" | "em_andamento" | "resolvido"
     }
@@ -519,6 +662,8 @@ export const Constants = {
         "saida_antecipada",
         "verba_evento",
       ],
+      reservation_status: ["ativa", "cancelada"],
+      resource_category: ["espaco", "equipamento"],
       ticket_priority: ["normal", "urgente"],
       ticket_status: ["aberto", "em_andamento", "resolvido"],
     },
