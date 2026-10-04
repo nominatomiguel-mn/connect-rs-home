@@ -54,12 +54,12 @@ export function historyDetailsText(event: string, details: unknown): string {
   if (!details || typeof details !== "object") return "";
   const d = details as Record<string, unknown>;
   if (event === "status_alterado") {
-    const de = STATUS_LABELS[String(d.de)] ?? String(d.de ?? "");
-    const para = STATUS_LABELS[String(d.para)] ?? String(d.para ?? "");
+    const de = STATUS_LABELS[String(d["de"])] ?? String(d["de"] ?? "");
+    const para = STATUS_LABELS[String(d["para"])] ?? String(d["para"] ?? "");
     return `${de} → ${para}`;
   }
   if (event === "chamado_criado") {
-    return `Prioridade: ${PRIORITY_LABELS[String(d.prioridade)] ?? String(d.prioridade ?? "")}`;
+    return `Prioridade: ${PRIORITY_LABELS[String(d["prioridade"])] ?? String(d["prioridade"] ?? "")}`;
   }
   return "";
 }
