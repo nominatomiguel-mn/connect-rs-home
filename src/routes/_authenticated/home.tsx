@@ -95,7 +95,7 @@ function HomePage() {
         <p className="text-sm font-semibold opacity-80">Central interna · Colégio Raios de Sol</p>
         <h1 className="mt-2 text-2xl font-black tracking-tight sm:text-3xl">Olá, {session.fullName.split(" ")[0] || "bem-vindo"}!</h1>
         <p className="mt-2 max-w-xl text-sm leading-relaxed opacity-85">Aqui estão os assuntos mais relevantes para o seu perfil.</p>
-        <div className="mt-4 inline-flex min-h-10 items-center gap-2 rounded-full bg-background/15 px-3 py-1.5 text-xs font-semibold"><ShieldCheck className="size-4" /> {roleLabels[isAdmin ? "admin" : session.roles[0]] ?? "Usuário autorizado"}</div>
+        <div className="mt-4 inline-flex min-h-10 items-center gap-2 rounded-full bg-background/15 px-3 py-1.5 text-xs font-semibold"><ShieldCheck className="size-4" /> {roleLabels[isAdmin ? "admin" : (session.roles[0] ?? "")] ?? "Usuário autorizado"}</div>
       </section>
 
       {dataError ? <div role="alert" className="flex items-center justify-between gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm"><span>Alguns dados da Home não puderam ser carregados.</span><button className="min-h-10 rounded-lg border px-3 font-semibold" onClick={() => { void ticketsQuery.refetch(); void requestsQuery.refetch(); void reservationsQuery.refetch(); }}>Tentar novamente</button></div> : null}
