@@ -169,20 +169,26 @@ export type Database = {
         Row: {
           active: boolean
           created_at: string
+          descricao: string | null
           id: string
           name: string
+          pedagogico: boolean
         }
         Insert: {
           active?: boolean
           created_at?: string
+          descricao?: string | null
           id?: string
           name: string
+          pedagogico?: boolean
         }
         Update: {
           active?: boolean
           created_at?: string
+          descricao?: string | null
           id?: string
           name?: string
+          pedagogico?: boolean
         }
         Relationships: []
       }
@@ -511,6 +517,38 @@ export type Database = {
           reservante_nome: string
           status: Database["public"]["Enums"]["reservation_status"]
         }[]
+      }
+      setores_sem_responsavel: {
+        Args: never
+        Returns: {
+          id: string
+          name: string
+        }[]
+      }
+      transferir_chamado: {
+        Args: { _motivo: string; _novo_setor: string; _ticket_id: string }
+        Returns: {
+          created_at: string
+          created_by: string
+          description: string
+          id: string
+          location: string | null
+          photo_paths: string[]
+          priority: Database["public"]["Enums"]["ticket_priority"]
+          resolved_at: string | null
+          sector_id: string
+          solution_comment: string | null
+          solution_photo: string | null
+          status: Database["public"]["Enums"]["ticket_status"]
+          title: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "tickets"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
     }
     Enums: {
