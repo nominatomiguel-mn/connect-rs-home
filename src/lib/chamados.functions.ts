@@ -303,3 +303,52 @@ async function notifyStatusChange(
     console.error("[email] Falha ao notificar criador:", err);
   }
 }
+
+// Dispara o e-mail após ações feitas pela tela. O acesso é conferido pelas regras do banco.
+export const notifyTicketEvent = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        ticket_id: z.string().uuid(),
+        type: z.enum(["novo_chamado", "status_alterado"]),
+      })
+      .parse(input),
+  )
+  .handler(async ({ context, data }) => {
+    const { data: ticket } = await context.supabase
+      .from("tickets")
+      .select("id, status, created_by")
+      .eq("id", data.ticket_id)
+      .maybeSingle();
+    if (!ticket) throw new Error("Chamado não encontrado.");
+    if (data.type === "novo_chamado") {
+      if (ticket.created_by !== context.userId) throw new Error("Sem permissão.");
+      await notifyNewTicket(ticket.id);
+    } else {
+      await notifyStatusChange(ticket.id, ticket.status);
+    }
+    return { ok: true };
+  });
+
+export const transferTicket = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        ticket_id: z.string().uuid(),
+        sector_id: z.string().uuid("Escolha o novo setor."),
+        motivo: z.string().trim().min(3, "Informe o motivo da transferência.").max(500),
+      })
+      .parse(input),
+  )
+  .handler(async ({ context, data }) => {
+    const { error } = await context.supabase.rpc("transferir_chamado", {
+      _ticket_id: data.ticket_id,
+      _novo_setor: data.sector_id,
+      _motivo: data.motivo,
+    });
+    if (error) throw new Error(error.message || "Não foi possível transferir o chamado.");
+    await notifyNewTicket(data.ticket_id);
+    return { ok: true };
+  });
