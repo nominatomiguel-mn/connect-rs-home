@@ -30,7 +30,7 @@ function HomePage() {
   const { data: session, isLoading: sessionLoading, isError: sessionError } = useQuery({ queryKey: ["session"], queryFn: () => getSessionFn() });
   const isAdmin = !!session?.roles.includes("admin");
   const isDirection = !!session?.roles.includes("direcao");
-  const isResponsible = !!session?.roles.includes("responsavel") || isAdmin;
+  const isResponsible = (session?.responsibleSectors.length ?? 0) > 0;
 
   const ticketsQuery = useQuery({
     queryKey: ["home", "tickets"],
@@ -107,7 +107,7 @@ function HomePage() {
       ) : isResponsible ? (
         <ResponsibleHome tickets={responsibleQueue} loading={ticketsQuery.isLoading} />
       ) : (
-        <CollaboratorHome tickets={openTickets} requests={requests.filter((r) => r.created_by === session.userId)} reservations={upcomingMine} loading={ticketsQuery.isLoading || requestsQuery.isLoading || reservationsQuery.isLoading} />
+        <CollaboratorHome tickets={openTickets.filter((t) => t.created_by === session.userId)} requests={requests.filter((r) => r.created_by === session.userId)} reservations={upcomingMine} loading={ticketsQuery.isLoading || requestsQuery.isLoading || reservationsQuery.isLoading} />
       )}
     </div>
   );
