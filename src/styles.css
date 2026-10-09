@@ -168,3 +168,10 @@
     outline: none;
   }
 }
+
+/* Hide the full Lovable branding widget, including its floating close control. */
+#lovable-badge {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
