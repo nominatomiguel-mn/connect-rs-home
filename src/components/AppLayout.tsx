@@ -29,7 +29,7 @@ function NavLinks({ isAdmin, orientation }: { isAdmin: boolean; orientation: "bo
   });
 }
 
-function initials(name?: string | null) { return (name ?? "U").trim().split(/\\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toLocaleUpperCase("pt-BR") ?? "").join("") || "U"; }
+function initials(name?: string | null) { return (name ?? "U").trim().split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toLocaleUpperCase("pt-BR") ?? "").join("") || "U"; }
 
 export function AppLayout({ children }: { children: ReactNode }) {
   const getSessionFn = useServerFn(getSession);
