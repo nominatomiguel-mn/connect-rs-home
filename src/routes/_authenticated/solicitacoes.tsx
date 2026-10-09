@@ -18,7 +18,8 @@ const types: {value:RequestType; label:string}[] = [
  {value:"material",label:"Pedido de material"},{value:"copias",label:"Cópias / impressões"},{value:"compra",label:"Compra"},
  {value:"saida_antecipada",label:"Saída antecipada"},{value:"verba_evento",label:"Uso de verba de evento"}
 ];
-const labels: Record<Status,string> = {pendente:"Pendente",aprovada:"Aprovada",negada:"Negada",cancelada:"Cancelada"};\nconst statusStyles: Record<Status,string> = {pendente:"bg-[#FFF1E0] text-[#9A3412]",aprovada:"bg-green-100 text-green-800",negada:"bg-red-100 text-red-800",cancelada:"bg-slate-100 text-slate-700"};
+const labels: Record<Status,string> = {pendente:"Pendente",aprovada:"Aprovada",negada:"Negada",cancelada:"Cancelada"};
+const statusStyles: Record<Status,string> = {pendente:"bg-[#FFF1E0] text-[#9A3412]",aprovada:"bg-green-100 text-green-800",negada:"bg-red-100 text-red-800",cancelada:"bg-slate-100 text-slate-700"};
 
 function dateTime(v:string){return new Intl.DateTimeFormat("pt-BR",{dateStyle:"short",timeStyle:"short"}).format(new Date(v));}
 function csvEscape(v:unknown){return '"'+String(v??"").replaceAll('"','""')+'"';}
