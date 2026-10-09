@@ -15,8 +15,9 @@ export const getSession = createServerFn({ method: "GET" })
     const { supabase, userId, claims } = context;
     const email = (claims?.email as string | undefined) ?? null;
 
-    const [profileRes, rolesRes, respRes] = await Promise.all([
+    const [profileRes, authorizedRes, rolesRes, respRes] = await Promise.all([
       supabase.from("profiles").select("full_name").eq("id", userId).maybeSingle(),
+      supabase.from("pessoas_autorizadas").select("nome").ilike("email", email ?? "").eq("ativo", true).maybeSingle(),
       supabase.from("user_roles").select("role").eq("user_id", userId),
       supabase
         .from("sector_responsibles")
@@ -37,7 +38,7 @@ export const getSession = createServerFn({ method: "GET" })
     return {
       userId,
       email,
-      fullName: profileRes.data?.full_name ?? email ?? "Usuário",
+      fullName: authorizedRes.data?.nome?.trim() || profileRes.data?.full_name?.trim() || email || "Usuário",
       roles: (rolesRes.data ?? []).map((r) => r.role),
       responsibleSectors,
     };
