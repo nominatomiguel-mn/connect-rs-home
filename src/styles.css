@@ -10,8 +10,7 @@
  * The @theme inline block maps CSS custom properties to Tailwind utility
  * classes (e.g. --color-primary -> bg-primary, text-primary).
  *
- * The :root and .dark blocks define the actual color values using oklch.
- * All colors MUST use oklch format.
+ * The :root and .dark blocks define semantic values; brand colors retain the school's exact hex palette.
  *
  * To add a new semantic color:
  * 1. Add the variable to :root (light value) and .dark (dark value)
@@ -61,6 +60,7 @@
   --color-sidebar-ring: var(--sidebar-ring);
   --color-brand-navy: var(--brand-navy);
   --color-brand-orange: var(--brand-orange);
+  --color-brand-orange-bright: var(--brand-orange-bright);
   --color-brand-orange-soft: var(--brand-orange-soft);
   --color-brand-blue: var(--brand-blue);
   --color-brand-green: var(--brand-green);
