@@ -8,6 +8,13 @@
       "when": 1791503362240,
       "tag": "0000_setores_exclusivos_transferencia",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791577708264,
+      "tag": "0001_authorized_emails_sectors",
+      "breakpoints": true
     }
   ]
 }
