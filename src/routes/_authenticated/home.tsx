@@ -4,7 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { ArrowRight, CalendarDays, CheckCircle2, ClipboardList, FileCheck2, ShieldCheck, Users, Wrench, type LucideIcon } from "lucide-react";
 import { getSession } from "@/lib/session.functions";
 
-type Ticket = { id: string; title: string; status: "aberto" | "em_andamento" | "resolvido"; priority: "normal" | "urgente"; created_at: string; sector_id: string; sector?: { name: string } | null };
+type Ticket = { id: string; title: string; status: "aberto" | "em_andamento" | "resolvido"; priority: "normal" | "urgente"; created_at: string; created_by: string; sector_id: string; sector?: { name: string } | null };
 type Request = { id: string; created_by: string; titulo: string; status: "pendente" | "aprovada" | "negada" | "cancelada"; created_at: string; tipo: string };
 type Reservation = { id: string; recurso_id: string; created_by: string; inicio: string; fim: string; finalidade: string; status: "ativa" | "cancelada"; reservante_nome: string; recurso?: { nome: string } | null };
 
@@ -30,13 +30,13 @@ function HomePage() {
   const { data: session, isLoading: sessionLoading, isError: sessionError } = useQuery({ queryKey: ["session"], queryFn: () => getSessionFn() });
   const isAdmin = !!session?.roles.includes("admin");
   const isDirection = !!session?.roles.includes("direcao");
-  const isResponsible = !!session?.roles.includes("responsavel") || isAdmin;
+  const isResponsible = (session?.responsibleSectors.length ?? 0) > 0;
 
   const ticketsQuery = useQuery({
     queryKey: ["home", "tickets"],
     queryFn: async () => {
       const { data, error } = await import("@/integrations/supabase/client").then(({ supabase }) =>
-        supabase.from("tickets").select("id,title,status,priority,created_at,sector_id,sector:sectors(name)").order("created_at", { ascending: false }).limit(100)
+        supabase.from("tickets").select("id,title,status,priority,created_at,created_by,sector_id,sector:sectors(name)").order("created_at", { ascending: false }).limit(100)
       );
       if (error) throw error;
       return (data ?? []) as Ticket[];
@@ -107,7 +107,7 @@ function HomePage() {
       ) : isResponsible ? (
         <ResponsibleHome tickets={responsibleQueue} loading={ticketsQuery.isLoading} />
       ) : (
-        <CollaboratorHome tickets={openTickets} requests={requests.filter((r) => r.created_by === session.userId)} reservations={upcomingMine} loading={ticketsQuery.isLoading || requestsQuery.isLoading || reservationsQuery.isLoading} />
+        <CollaboratorHome tickets={openTickets.filter((t) => t.created_by === session.userId)} requests={requests.filter((r) => r.created_by === session.userId)} reservations={upcomingMine} loading={ticketsQuery.isLoading || requestsQuery.isLoading || reservationsQuery.isLoading} />
       )}
     </div>
   );
@@ -119,7 +119,9 @@ function AdminHome({ tickets, requests, reservations }: { tickets: Ticket[]; req
     { label: "Solicitações pendentes", value: requests.filter((r) => r.status === "pendente").length, icon: FileCheck2, to: "/solicitacoes" as const },
     { label: "Reservas ativas", value: reservations.filter((r) => r.status === "ativa").length, icon: CalendarDays, to: "/reservas" as const },
   ];
-  return <section className="space-y-4"><SectionTitle title="Visão geral" description="Resumo operacional dos módulos."/><div className="grid gap-3 sm:grid-cols-3">{cards.map((card) => <Link key={card.label} to={card.to} className="min-h-32 rounded-2xl border bg-card p-5 transition-colors hover:bg-accent/40"><card.icon className="size-5 text-primary"/><p className="mt-4 text-3xl font-black">{card.value}</p><p className="mt-1 text-sm text-muted-foreground">{card.label}</p></Link>)}</div><div className="grid gap-3 sm:grid-cols-2"><QuickLink to="/admin/pessoas" icon={Users} title="Pessoas autorizadas" description="Gerencie acessos e papéis."/><QuickLink to="/admin/setores" icon={Wrench} title="Setores" description="Gerencie setores e responsáveis."/></div></section>;
+  const semResp = useQuery({ queryKey: ["home", "setores-sem-responsavel"], queryFn: async () => { const { supabase } = await import("@/integrations/supabase/client"); const { data, error } = await supabase.rpc("setores_sem_responsavel"); if (error) throw error; return data ?? []; } });
+  const missing = semResp.data ?? [];
+  return <section className="space-y-4">{missing.length ? <Link to="/admin/setores" role="alert" className="block rounded-2xl border border-destructive/30 bg-destructive/5 p-4 text-sm"><p className="font-bold text-destructive">Setor sem responsável ({missing.length})</p><p className="mt-1 text-muted-foreground">Chamados destes setores ficam visíveis só para a administração: {missing.map((m) => m.name).join(", ")}.</p></Link> : null}<SectionTitle title="Visão geral" description="Resumo operacional dos módulos."/><div className="grid gap-3 sm:grid-cols-3">{cards.map((card) => <Link key={card.label} to={card.to} className="min-h-32 rounded-2xl border bg-card p-5 transition-colors hover:bg-accent/40"><card.icon className="size-5 text-primary"/><p className="mt-4 text-3xl font-black">{card.value}</p><p className="mt-1 text-sm text-muted-foreground">{card.label}</p></Link>)}</div><div className="grid gap-3 sm:grid-cols-2"><QuickLink to="/admin/pessoas" icon={Users} title="Pessoas autorizadas" description="Gerencie acessos e papéis."/><QuickLink to="/admin/setores" icon={Wrench} title="Setores" description="Gerencie setores e responsáveis."/></div></section>;
 }
 
 function DirectionHome({ requests, loading }: { requests: Request[]; loading: boolean }) {

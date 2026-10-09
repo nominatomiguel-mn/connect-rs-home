@@ -6,6 +6,7 @@ import { ArrowLeft, Camera, CheckCircle2, Clock3, ImagePlus, MessageCircle, Pape
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { getSession } from "@/lib/session.functions";
+import { notifyTicketEvent, transferTicket } from "@/lib/chamados.functions";
 
 type Ticket = {
   id: string; created_by: string; sector_id: string; title: string; description: string; location: string | null;
@@ -36,7 +37,7 @@ async function signedUrl(path: string) {
 }
 async function notifyTicket(ticketId: string, type: "novo_chamado" | "status_alterado") {
   try {
-    await supabase.functions.invoke("send-ticket-notification", { body: { ticketId, type } });
+    await notifyTicketEvent({ data: { ticket_id: ticketId, type } });
   } catch {
     // A notificação não deve impedir a abertura/atualização do chamado.
   }
@@ -58,6 +59,8 @@ function ChamadosPage() {
   const [creating, setCreating] = useState(false);
   const [statusFilter, setStatusFilter] = useState<"todos" | Ticket["status"]>("todos");
   const [urgentOnly, setUrgentOnly] = useState(false);
+  const [sectorFilter, setSectorFilter] = useState("todos");
+  const [search, setSearch] = useState("");
   const [error, setError] = useState("");
 
   const { data: tickets = [], isLoading } = useQuery({
@@ -71,8 +74,11 @@ function ChamadosPage() {
   });
 
   const isAdmin = !!session?.roles.includes("admin");
-  const isResponsible = !!session?.roles.includes("responsavel") || isAdmin;
-  const visibleTickets = tickets.filter((ticket) => (statusFilter === "todos" || ticket.status === statusFilter) && (!urgentOnly || ticket.priority === "urgente"));
+  const mySectorIds = new Set((session?.responsibleSectors ?? []).map((s) => s.id));
+  const isResponsible = mySectorIds.size > 0 || isAdmin;
+  const canManage = (ticket: Ticket) => isAdmin || mySectorIds.has(ticket.sector_id);
+  const term = search.trim().toLowerCase();
+  const visibleTickets = tickets.filter((ticket) => (statusFilter === "todos" || ticket.status === statusFilter) && (!urgentOnly || ticket.priority === "urgente") && (sectorFilter === "todos" || ticket.sector_id === sectorFilter) && (!term || `${ticket.title} ${ticket.description} ${ticket.location ?? ""}`.toLowerCase().includes(term)));
 
   if (sessionLoading || isLoading) return <p className="text-sm text-muted-foreground">Carregando chamados…</p>;
 
@@ -84,7 +90,7 @@ function ChamadosPage() {
 
   if (selectedId) {
     const ticket = tickets.find((item) => item.id === selectedId);
-    if (ticket) return <TicketDetail ticket={ticket} isResponsible={isResponsible} onBack={() => setSelectedId(null)} onChanged={async () => { await queryClient.invalidateQueries({ queryKey: ["tickets"] }); }} onError={setError} />;
+    if (ticket) return <TicketDetail ticket={ticket} isResponsible={canManage(ticket)} onBack={() => setSelectedId(null)} onChanged={async () => { await queryClient.invalidateQueries({ queryKey: ["tickets"] }); }} onError={setError} />;
   }
 
   return (
@@ -98,13 +104,15 @@ function ChamadosPage() {
         <select aria-label="Filtrar por status" className="h-10 rounded-lg border bg-background px-3 text-sm" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}>
           <option value="todos">Todos os status</option><option value="aberto">Abertos</option><option value="em_andamento">Em andamento</option><option value="resolvido">Resolvidos</option>
         </select>
+        {(session?.responsibleSectors.length ?? 0) > 1 ? <select aria-label="Filtrar por setor" className="h-10 rounded-lg border bg-background px-3 text-sm" value={sectorFilter} onChange={(e) => setSectorFilter(e.target.value)}><option value="todos">Todos os meus setores</option>{session?.responsibleSectors.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select> : null}
+        <input aria-label="Buscar chamados" placeholder="Buscar…" className="h-10 rounded-lg border bg-background px-3 text-sm" value={search} onChange={(e) => setSearch(e.target.value)} />
         {isResponsible ? <label className="flex h-10 items-center gap-2 rounded-lg border px-3 text-sm font-medium"><input type="checkbox" checked={urgentOnly} onChange={(e) => setUrgentOnly(e.target.checked)} />Somente urgentes</label> : null}
         <span className="text-sm text-muted-foreground sm:ml-auto">{visibleTickets.length} chamado(s)</span>
       </section>
       <section className="space-y-3">
         {visibleTickets.length === 0 ? <div className="rounded-2xl border border-dashed p-8 text-center"><CheckCircle2 className="mx-auto size-8 text-muted-foreground" /><p className="mt-3 font-semibold">Nenhum chamado encontrado.</p><p className="mt-1 text-sm text-muted-foreground">Os chamados que você puder acessar aparecerão aqui.</p></div> :
           visibleTickets.map((ticket) => <button key={ticket.id} type="button" onClick={() => setSelectedId(ticket.id)} className="w-full rounded-2xl border bg-card p-4 text-left transition hover:bg-accent/40">
-            <div className="flex items-start justify-between gap-3"><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h2 className="truncate font-bold">{ticket.title}</h2><span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${statusStyle[ticket.status]}`}>{statusLabel[ticket.status]}</span>{ticket.priority === "urgente" ? <span className="flex items-center gap-1 rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-bold text-destructive"><ShieldAlert className="size-3" />Urgente</span> : null}</div><p className="mt-1 text-sm text-muted-foreground">{ticket.sector?.name ?? "Setor"}{ticket.location ? ` · ${ticket.location}` : ""}</p></div><Clock3 className="mt-1 size-4 shrink-0 text-muted-foreground" /></div>
+            <div className="flex items-start justify-between gap-3"><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h2 className="truncate font-bold">{ticket.title}</h2><span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${statusStyle[ticket.status]}`}>{statusLabel[ticket.status]}</span>{ticket.priority === "urgente" ? <span className="flex items-center gap-1 rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-bold text-destructive"><ShieldAlert className="size-3" />Urgente</span> : null}</div><p className="mt-1.5 flex flex-wrap items-center gap-2 text-sm text-muted-foreground"><span className="rounded-full bg-secondary px-2 py-0.5 text-xs font-bold text-secondary-foreground">{ticket.sector?.name ?? "Setor"}</span>{ticket.location ? <span>{ticket.location}</span> : null}</p></div><Clock3 className="mt-1 size-4 shrink-0 text-muted-foreground" /></div>
             <p className="mt-3 line-clamp-2 text-sm text-muted-foreground">{ticket.description}</p><p className="mt-3 text-xs text-muted-foreground">{formatDate(ticket.created_at)}</p>
           </button>)}
       </section>
@@ -113,15 +121,17 @@ function ChamadosPage() {
 }
 
 function NewTicketForm({ sessionUserId, onCancel, onCreated }: { sessionUserId: string; onCancel: () => void; onCreated: (id: string) => Promise<void> }) {
-  const [sectors, setSectors] = useState<{ id: string; name: string }[]>([]);
+  const [sectors, setSectors] = useState<{ id: string; name: string; descricao: string | null }[]>([]);
+  const [noResponsible, setNoResponsible] = useState<Set<string>>(new Set());
   const [sectorId, setSectorId] = useState(""); const [title, setTitle] = useState(""); const [description, setDescription] = useState(""); const [location, setLocation] = useState("");
   const [priority, setPriority] = useState<"normal" | "urgente">("normal"); const [files, setFiles] = useState<File[]>([]); const [saving, setSaving] = useState(false); const [error, setError] = useState("");
   const galleryRef = useRef<HTMLInputElement>(null); const cameraRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    supabase.from("sectors").select("id,name").eq("active", true).order("name").then(({ data, error: loadError }) => {
-      if (loadError) setError("Não foi possível carregar os setores ativos."); else setSectors((data ?? []) as { id: string; name: string }[]);
+    supabase.from("sectors").select("id,name,descricao").eq("active", true).order("name").then(({ data, error: loadError }) => {
+      if (loadError) setError("Não foi possível carregar os setores ativos."); else setSectors(data ?? []);
     });
+    supabase.rpc("setores_sem_responsavel").then(({ data }) => setNoResponsible(new Set((data ?? []).map((s) => s.id))));
   }, []);
 
   function addFiles(event: ChangeEvent<HTMLInputElement>) {
@@ -148,7 +158,9 @@ function NewTicketForm({ sessionUserId, onCancel, onCreated }: { sessionUserId: 
   return <form onSubmit={submit} className="space-y-5">
     <header className="flex items-center gap-3"><Button type="button" variant="ghost" size="icon" onClick={onCancel} aria-label="Voltar"><ArrowLeft className="size-5" /></Button><div><p className="text-xs font-bold uppercase tracking-wider text-primary">Novo chamado</p><h1 className="text-2xl font-black">Abrir solicitação</h1></div></header>
     <section className="space-y-4 rounded-2xl border bg-card p-4 sm:p-6">
-      <label className="block space-y-1.5 text-sm font-medium">Setor<select required className="h-10 w-full rounded-lg border bg-background px-3" value={sectorId} onChange={(e) => setSectorId(e.target.value)}><option value="">Selecione um setor ativo</option>{sectors.map((sector) => <option key={sector.id} value={sector.id}>{sector.name}</option>)}</select></label>
+      <label className="block space-y-1.5 text-sm font-medium">Setor<select required className="h-10 w-full rounded-lg border bg-background px-3" value={sectorId} onChange={(e) => setSectorId(e.target.value)}><option value="">Selecione um setor ativo</option>{sectors.map((sector) => <option key={sector.id} value={sector.id}>{sector.name}{sector.descricao ? ` — ${sector.descricao}` : ""}</option>)}</select>
+        {sectorId ? <span className="block text-xs font-normal text-muted-foreground">Exemplos: {sectors.find((s) => s.id === sectorId)?.descricao ?? "—"}</span> : null}
+        {sectorId && noResponsible.has(sectorId) ? <span role="alert" className="block rounded-lg bg-secondary/40 p-2 text-xs font-semibold text-secondary-foreground">Este setor ainda não tem responsável. Seu chamado ficará visível só para a administração até alguém ser designado.</span> : null}</label>
       <label className="block space-y-1.5 text-sm font-medium">Título curto<input required minLength={3} maxLength={120} className="h-10 w-full rounded-lg border bg-background px-3" placeholder="Ex.: Torneira com vazamento" value={title} onChange={(e) => setTitle(e.target.value)} /></label>
       <label className="block space-y-1.5 text-sm font-medium">Descrição<textarea required minLength={3} rows={5} className="w-full rounded-lg border bg-background p-3" placeholder="Explique o que aconteceu." value={description} onChange={(e) => setDescription(e.target.value)} /></label>
       <label className="block space-y-1.5 text-sm font-medium">Local<input maxLength={160} className="h-10 w-full rounded-lg border bg-background px-3" placeholder="Ex.: Sala 5" value={location} onChange={(e) => setLocation(e.target.value)} /></label>
@@ -196,6 +208,7 @@ function TicketDetail({ ticket, isResponsible, onBack, onChanged, onError }: { t
         solution_photo: nextStatus === "resolvido" ? solutionPath : ticket.solution_photo,
       }).eq("id", ticket.id);
       if (updateError) throw updateError;
+      await notifyTicket(ticket.id, "status_alterado");
       await onChanged();
     } catch (e) { setError(e instanceof Error ? e.message : "Não foi possível alterar o status."); } finally { setSavingStatus(false); }
   }
@@ -215,6 +228,19 @@ function TicketDetail({ ticket, isResponsible, onBack, onChanged, onError }: { t
     } catch (e) { setError(e instanceof Error ? e.message : "Não foi possível adicionar o comentário."); } finally { setSavingComment(false); }
   }
 
+  const [transferSectors, setTransferSectors] = useState<{ id: string; name: string }[]>([]);
+  const [transferTo, setTransferTo] = useState(""); const [transferReason, setTransferReason] = useState(""); const [transferring, setTransferring] = useState(false);
+  useEffect(() => {
+    if (!isResponsible || ticket.status !== "aberto") return;
+    supabase.from("sectors").select("id,name").eq("active", true).order("name").then(({ data }) => setTransferSectors((data ?? []).filter((s) => s.id !== ticket.sector_id)));
+  }, [isResponsible, ticket.status, ticket.sector_id]);
+  async function transfer() {
+    if (!transferTo || transferReason.trim().length < 3) { setError("Escolha o novo setor e informe o motivo."); return; }
+    setTransferring(true); setError("");
+    try { await transferTicket({ data: { ticket_id: ticket.id, sector_id: transferTo, motivo: transferReason.trim() } }); await onChanged(); onBack(); }
+    catch (e) { setError(e instanceof Error ? e.message : "Não foi possível transferir o chamado."); } finally { setTransferring(false); }
+  }
+
   const nextLabel = ticket.status === "aberto" ? "Marcar em andamento" : ticket.status === "em_andamento" ? "Resolver chamado" : "Resolvido";
 
   return <div className="space-y-5">
@@ -222,6 +248,8 @@ function TicketDetail({ ticket, isResponsible, onBack, onChanged, onError }: { t
     <section className="space-y-4 rounded-2xl border bg-card p-4 sm:p-6"><div className="flex flex-wrap items-center gap-2"><span className={`rounded-full px-2.5 py-1 text-xs font-bold ${statusStyle[ticket.status]}`}>{statusLabel[ticket.status]}</span><span className="text-xs text-muted-foreground">Aberto em {formatDate(ticket.created_at)}</span></div><div><h2 className="text-sm font-bold">Descrição</h2><p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed">{ticket.description}</p></div>{photoUrls.length ? <div><h2 className="text-sm font-bold">Fotos do chamado</h2><div className="mt-2 grid grid-cols-3 gap-2">{photoUrls.map((url, index) => <a key={url} href={url} target="_blank" rel="noreferrer"><img src={url} alt={`Foto do chamado ${index + 1}`} className="aspect-square w-full rounded-lg object-cover" /></a>)}</div></div> : null}</section>
 
     {isResponsible && ticket.status !== "resolvido" ? <section className="space-y-4 rounded-2xl border bg-card p-4 sm:p-6"><div><h2 className="font-bold">Atualizar chamado</h2><p className="mt-1 text-xs text-muted-foreground">Somente o responsável deste setor ou um administrador pode alterar o status.</p></div><select className="h-10 w-full rounded-lg border bg-background px-3 text-sm" value={nextStatus} onChange={(e) => setNextStatus(e.target.value as Ticket["status"])}><option value={ticket.status}>{statusLabel[ticket.status]}</option>{ticket.status === "aberto" ? <option value="em_andamento">Em andamento</option> : null}{ticket.status === "em_andamento" ? <option value="resolvido">Resolvido</option> : null}</select>{nextStatus === "resolvido" ? <><label className="block space-y-1.5 text-sm font-medium">Comentário da solução<textarea rows={4} className="w-full rounded-lg border bg-background p-3" placeholder="Descreva o que foi feito." value={solutionComment} onChange={(e) => setSolutionComment(e.target.value)} /></label><label className="block space-y-1.5 text-sm font-medium">Foto da solução<input className="mt-1 block w-full text-sm" type="file" accept="image/*" capture="environment" onChange={(e) => setSolutionFile(e.target.files?.[0] ?? null)} /></label></> : null}<Button disabled={savingStatus || nextStatus === ticket.status} onClick={changeStatus}>{savingStatus ? "Salvando…" : nextLabel}</Button></section> : null}
+
+    {isResponsible && ticket.status === "aberto" ? <section className="space-y-3 rounded-2xl border bg-card p-4 sm:p-6"><div><h2 className="font-bold">Transferir para outro setor</h2><p className="mt-1 text-xs text-muted-foreground">Use quando o chamado foi aberto no setor errado. O novo setor será avisado.</p></div><select aria-label="Novo setor" className="h-10 w-full rounded-lg border bg-background px-3 text-sm" value={transferTo} onChange={(e) => setTransferTo(e.target.value)}><option value="">Selecione o novo setor</option>{transferSectors.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select><textarea rows={3} className="w-full rounded-lg border bg-background p-3 text-sm" placeholder="Motivo da transferência (obrigatório)" value={transferReason} onChange={(e) => setTransferReason(e.target.value)} /><Button variant="outline" disabled={transferring || !transferTo || transferReason.trim().length < 3} onClick={transfer}>{transferring ? "Transferindo…" : "Transferir chamado"}</Button></section> : null}
 
     {ticket.status === "resolvido" && (ticket.solution_comment || solutionUrl) ? <section className="space-y-3 rounded-2xl border bg-card p-4 sm:p-6"><div className="flex items-center gap-2"><CheckCircle2 className="size-5 text-emerald-600" /><h2 className="font-bold">Solução</h2></div>{ticket.solution_comment ? <p className="whitespace-pre-wrap text-sm leading-relaxed">{ticket.solution_comment}</p> : null}{solutionUrl ? <a href={solutionUrl} target="_blank" rel="noreferrer"><img src={solutionUrl} alt="Foto da solução" className="max-h-72 rounded-lg object-contain" /></a> : null}</section> : null}
 
@@ -239,5 +267,6 @@ function historyLabel(item: History) {
     const from = String(item.details?.["de"] ?? ""); const to = String(item.details?.["para"] ?? "");
     return `alterou o status de ${statusLabel[from as Ticket["status"]] ?? from} para ${statusLabel[to as Ticket["status"]] ?? to}.`;
   }
+  if (item.event === "transferido") return `transferiu o chamado de ${String(item.details?.["de_setor"] ?? "")} para ${String(item.details?.["para_setor"] ?? "")}. Motivo: ${String(item.details?.["motivo"] ?? "")}`;
   return "atualizou o chamado.";
 }
