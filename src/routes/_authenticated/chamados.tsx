@@ -25,7 +25,7 @@ export const Route = createFileRoute("/_authenticated/chamados")({
 
 const statusLabel: Record<Ticket["status"], string> = { aberto: "Aberto", em_andamento: "Em andamento", resolvido: "Resolvido" };
 const statusStyle: Record<Ticket["status"], string> = {
-  aberto: "bg-amber-500/10 text-amber-700", em_andamento: "bg-primary/10 text-primary", resolvido: "bg-emerald-500/10 text-emerald-700",
+  aberto: "bg-[#FFF1E0] text-[#9A3412]", em_andamento: "bg-blue-100 text-blue-800", resolvido: "bg-green-100 text-green-800",
 };
 
 function formatDate(value: string) {
@@ -111,7 +111,7 @@ function ChamadosPage() {
       </section>
       <section className="space-y-3">
         {visibleTickets.length === 0 ? <div className="rounded-2xl border border-dashed p-8 text-center"><CheckCircle2 className="mx-auto size-8 text-muted-foreground" /><p className="mt-3 font-semibold">Nenhum chamado encontrado.</p><p className="mt-1 text-sm text-muted-foreground">Os chamados que você puder acessar aparecerão aqui.</p></div> :
-          visibleTickets.map((ticket) => <button key={ticket.id} type="button" onClick={() => setSelectedId(ticket.id)} className="w-full rounded-2xl border bg-card p-4 text-left transition hover:bg-accent/40">
+          visibleTickets.map((ticket) => <button key={ticket.id} type="button" onClick={() => setSelectedId(ticket.id)} className={`w-full rounded-2xl border border-border border-l-4 bg-card p-4 text-left shadow-sm transition-all hover:shadow-md ${ticket.status === "aberto" ? "border-l-[#F57C00]" : ticket.status === "em_andamento" ? "border-l-[#2563EB]" : "border-l-[#16A34A]"}`}>
             <div className="flex items-start justify-between gap-3"><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h2 className="truncate font-bold">{ticket.title}</h2><span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${statusStyle[ticket.status]}`}>{statusLabel[ticket.status]}</span>{ticket.priority === "urgente" ? <span className="flex items-center gap-1 rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-bold text-destructive"><ShieldAlert className="size-3" />Urgente</span> : null}</div><p className="mt-1.5 flex flex-wrap items-center gap-2 text-sm text-muted-foreground"><span className="rounded-full bg-secondary px-2 py-0.5 text-xs font-bold text-secondary-foreground">{ticket.sector?.name ?? "Setor"}</span>{ticket.location ? <span>{ticket.location}</span> : null}</p></div><Clock3 className="mt-1 size-4 shrink-0 text-muted-foreground" /></div>
             <p className="mt-3 line-clamp-2 text-sm text-muted-foreground">{ticket.description}</p><p className="mt-3 text-xs text-muted-foreground">{formatDate(ticket.created_at)}</p>
           </button>)}
