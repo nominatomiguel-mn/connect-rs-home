@@ -91,7 +91,8 @@ function HomePage() {
 
   return (
     <div className="space-y-6">
-      <section className="relative isolate overflow-hidden rounded-2xl bg-gradient-to-br from-brand-navy via-brand-navy to-[#174A75] p-5 text-white shadow-sm sm:p-8">\n        <span aria-hidden="true" className="pointer-events-none absolute -right-8 -top-10 -z-10 size-40 rounded-full bg-brand-orange-bright/20 ring-8 ring-brand-orange-bright/10" />
+      <section className="relative isolate overflow-hidden rounded-2xl bg-gradient-to-br from-brand-navy via-brand-navy to-[#174A75] p-5 text-white shadow-sm sm:p-8">
+        <span aria-hidden="true" className="pointer-events-none absolute -right-8 -top-10 -z-10 size-40 rounded-full bg-brand-orange-bright/20 ring-8 ring-brand-orange-bright/10" />
         <p className="text-sm font-semibold opacity-80">Central interna · Colégio Raios de Sol</p>
         <h1 className="mt-2 text-2xl font-black tracking-tight sm:text-3xl">Olá, {session.fullName.split(" ")[0] || "bem-vindo"}!</h1>
         <p className="mt-2 max-w-xl text-sm leading-relaxed opacity-85">Aqui estão os assuntos mais relevantes para o seu perfil.</p>
